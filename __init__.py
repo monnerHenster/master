@@ -64,27 +64,43 @@ class enumAdd(bpy.types.PropertyGroup):
 
 
 class boneChain(bpy.types.PropertyGroup):
-    string:bpy.props.StringProperty()
+    bone:bpy.props.StringProperty()
 
 class boneChains(bpy.types.PropertyGroup):
+    isExtraBone:bpy.props.BoolProperty()
+    name: bpy.props.StringProperty()
     boneChain:bpy.props.CollectionProperty(type=boneChain)
 
 class boneChainsMap(bpy.types.PropertyGroup):
-    checked: bpy.props.BoolProperty(name="")
-    # boneChains: bpy.context.scene.my_boneChains
+    # checked: bpy.props.BoolProperty(name="")
+    # boneChains: bpy.props.StringProperty()
     boneChains: bpy.props.CollectionProperty(type=boneChains)
+    # boneChains: bpy.context.scene.my_boneChains
     targetBoneChainsEnum: bpy.props.EnumProperty(items = getItem)
+
 
 #operator, connected the button that adds the params
 class HiOp(bpy.types.Operator):
     bl_idname = 'hi.go'
-    bl_label = 'show bonechains'
+    bl_label = 'showBonechains'
     slot: bpy.props.IntProperty()
     
     def execute(self, context):
-        bpy.context.scene.my_boneChainsMap.clear()
+        # bpy.context.scene.my_boneChainsMap.clear()
         item = bpy.context.scene.my_boneChainsMap.add()
-        # item.boneChains = bpy.context.scene.my_boneChains.add()
+        # item = bpy.context.scene.my_boneChains.add()
+        # item.string = 'ddd'
+
+        # item.boneChains = bpy.context.scene.my_boneChains
+
+        item2 = item.boneChains.add()
+        item3 = item2.boneChain.add()
+        item3.string = 'ddd'
+        attr = [a for a in dir(item3) if not a.startswith('__')]
+        print(dir(item3))
+        
+        for i in attr:
+            print(i,getattr(item3,i))
         # item.boneChains.boneChain = bpy.context.scene.my_boneChain.add()
         # item.boneChains.boneChain.string = 'boneName'
 
@@ -113,9 +129,9 @@ class HiOp(bpy.types.Operator):
         # newItems
         return {'FINISHED'}
 
-class TestOP(bpy.types.Operator):
-    bl_idname = 'test.go'
-    bl_label = 'test'
+class SaveBoneChainsOP(bpy.types.Operator):
+    bl_idname = 'savebonechains.go'
+    bl_label = 'saveBoneChains'
     
     def execute(self, context):
         #add the param to the registered collection
@@ -134,27 +150,17 @@ class TestOP(bpy.types.Operator):
         #     bpy.context.scene.boneChainsMap.remove(idx)
         #     i += 1
         # print(idxNeedRmove)
-
-        # for item in enumerate(context.scene.boneChainsMap):
-        #     attr = [a for a in dir(item) if  not a.startswith('__')]
-        #     for str in attr:
-        #         print(str,getattr(item,str))
-        #         attr2 = [b for b in dir(str) if  not b.startswith('__')]
-        #         for str2 in attr2:
-        #             print(str2,getattr(str,str2))
+        scn = bpy.context.scene
+        for idx,boneChains in enumerate(scn.my_boneChainsMap):
+            print(dir(boneChains))
+            # for idx2,boneChain in enumerate(boneChains):
+            #     if boneChain.isExtraBone == True:
+            #         pass
 
 
-        #     break
-        # for idx,item in enumerate(context.scene.boneChainsMap):
-        #     print(item.boneName)
-        #     print(item.targetBoneChainsEnum)
-        #     attr = [a for a in dir(item) if  not a.startswith('__')]
-        #     for str in attr:
-        #         print(str,getattr(item,str))
-
-        for idx,item in enumerate(bpy.context.scene.globalvalue):
-            pass
-            print(item.string)
+        # for idx,item in enumerate(bpy.context.scene.globalvalue):
+        #     pass
+        #     print(item.string)
         # context.scene.boneChainsMap.add().checked
         # context.scene.boneChainsMap.remove(0)
         return {'FINISHED'}        
@@ -177,9 +183,20 @@ class HelloWorldPanel(bpy.types.Panel):
         # item = context.scene.enum_ 
         #use the registered collection shared with the operator to built the rest of the panel
         for index, input in enumerate(context.scene.my_boneChainsMap):
-            row = layout.row()
-            # row.prop(input,input.boneName)
-            row.prop(input,"boneChains")
+            layout.label(text='dddd')
+        #     for idx,input2 in enumerate(input.boneChains):
+        #         row2 =layout.row()
+        #         row2.prop(input2,'boneChain')
+        #         for idx,input3 in enumerate(input2.boneChain):
+        #         # print(input2)
+        #         # attr = ( a for a in dir(input2) if not a.startswith('__'))
+        #         # for b in attr:
+        #         #     print(b,getattr(input2,b))
+
+        #             row3 = layout.row()
+        #     # row.prop(input,input.boneName)
+        #     # row.prop(input,"boneChains")
+        #             row3.prop(input3,"string")
             # row.prop(input,"checked")
             # row.label(text="boneName")
             # row.label(text=input.boneName)
@@ -195,13 +212,13 @@ class HelloWorldPanel(bpy.types.Panel):
         
         row = layout.row()
         row.operator("hi.go")
-        row.operator("test.go")
+        row.operator("savebonechains.go")
 
 classes = [boneChain,boneChains,boneChainsMap]
 
 def register():
     bpy.utils.register_class(HelloWorldPanel)
-    bpy.utils.register_class(TestOP)
+    bpy.utils.register_class(SaveBoneChainsOP)
     bpy.utils.register_class(HiOp)
     # bpy.utils.register_class(boneChainsMap)
     bpy.utils.register_class(enumAdd)
@@ -212,6 +229,7 @@ def register():
     #register a collection of params so that the operator and panel can share them
     # bpy.types.Scene.boneChainsMap = bpy.props.CollectionProperty(type=boneChainsMap)
     bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
+    bpy.types.Scene.my_boneChain = bpy.props.CollectionProperty(type=boneChain)
     bpy.types.Scene.my_boneChains = bpy.props.CollectionProperty(type=boneChains)
     # bpy.types.Scene.my_boneChains = bpy.props.CollectionProperty(type=boneChains)
     bpy.types.Scene.my_boneChainsMap = bpy.props.CollectionProperty(type=boneChainsMap)
@@ -221,7 +239,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(HelloWorldPanel)
     bpy.utils.unregister_class(HiOp)
-    bpy.utils.unregister_class(TestOP)
+    bpy.utils.unregister_class(SaveBoneChainsOP)
     bpy.utils.unregister_class(enumAdd)
     # bpy.utils.unregister_class(boneChainsMap)
     for cls in classes:
@@ -232,6 +250,7 @@ def unregister():
     del bpy.types.Scene.enum_Add
     del bpy.types.Scene.my_boneChains
     del bpy.types.Scene.my_boneChainsMap
+    del bpy.types.Scene.my_boneChain
 
 if __name__ == "__main__":
     register()
