@@ -13,6 +13,7 @@
 
 import bpy
 import random
+from .ReampArmature import *
 
 bl_info = {
     "name" : "PanelPratise",
@@ -86,21 +87,37 @@ class HiOp(bpy.types.Operator):
     slot: bpy.props.IntProperty()
     
     def execute(self, context):
-        # bpy.context.scene.my_boneChainsMap.clear()
-        item = bpy.context.scene.my_boneChainsMap.add()
-        # item = bpy.context.scene.my_boneChains.add()
-        # item.string = 'ddd'
+        scn = bpy.context.scene
+        scn.my_boneChains.clear()
+        retargetValue = retarget()
+        retargetValue.start()
+        sourceRigBoneChains = retargetValue.sourceArmature.boneChains
+        targetRigBoneChains = retargetValue.targetArmature.boneChains
 
-        # item.boneChains = bpy.context.scene.my_boneChains
-
-        item2 = item.boneChains.add()
-        item3 = item2.boneChain.add()
-        item3.string = 'ddd'
-        attr = [a for a in dir(item3) if not a.startswith('__')]
-        print(dir(item3))
+        print(sourceRigBoneChains)
+        for boneChain in sourceRigBoneChains:
+            item = scn.my_boneChains.add()
+            boneNames = ''
+            for bone in boneChain:
+                boneNames += bone.name
+            item.name = boneNames
         
-        for i in attr:
-            print(i,getattr(item3,i))
+
+        # bpy.context.scene.my_boneChainsMap.clear()
+        # item = bpy.context.scene.my_boneChainsMap.add()
+        # # item = bpy.context.scene.my_boneChains.add()
+        # # item.string = 'ddd'
+
+        # # item.boneChains = bpy.context.scene.my_boneChains
+
+        # item2 = item.boneChains.add()
+        # item3 = item2.boneChain.add()
+        # item3.string = 'ddd'
+        # attr = [a for a in dir(item3) if not a.startswith('__')]
+        # print(dir(item3))
+        
+        # for i in attr:
+        #     print(i,getattr(item3,i))
         # item.boneChains.boneChain = bpy.context.scene.my_boneChain.add()
         # item.boneChains.boneChain.string = 'boneName'
 
@@ -152,7 +169,10 @@ class SaveBoneChainsOP(bpy.types.Operator):
         # print(idxNeedRmove)
         scn = bpy.context.scene
         for idx,boneChains in enumerate(scn.my_boneChainsMap):
-            print(dir(boneChains))
+            # print(dir(boneChains))
+            print(idx)
+        # print(dir(scn.my_boneChainsMap.remove))
+        # print((scn.my_boneChainsMap.remove.__str__))
             # for idx2,boneChain in enumerate(boneChains):
             #     if boneChain.isExtraBone == True:
             #         pass
@@ -175,15 +195,18 @@ class HelloWorldPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        scn = bpy.context.scene
 
         obj = context.object
 
         row = layout.row()
-        row.label(text="Hello world!", icon='WORLD_DATA')
+        row.operator("hi.go")
+        row.operator("savebonechains.go")
+        # row.label(text="Hello world!", icon='WORLD_DATA')
         # item = context.scene.enum_ 
         #use the registered collection shared with the operator to built the rest of the panel
-        for index, input in enumerate(context.scene.my_boneChainsMap):
-            layout.label(text='dddd')
+        # for index, input in enumerate(context.scene.my_boneChainsMap):
+        #     layout.label(text='dddd')
         #     for idx,input2 in enumerate(input.boneChains):
         #         row2 =layout.row()
         #         row2.prop(input2,'boneChain')
@@ -192,7 +215,13 @@ class HelloWorldPanel(bpy.types.Panel):
         #         # attr = ( a for a in dir(input2) if not a.startswith('__'))
         #         # for b in attr:
         #         #     print(b,getattr(input2,b))
-
+        for idx,item in enumerate(scn.my_boneChains):
+            row = layout.row(align=False)
+            row.alignment = 'LEFT'
+            row.prop(item,'isExtraBone')
+            row.label(text=item.name)
+            # row.split(align=True,factor=0.3)
+            # row.separator()
         #             row3 = layout.row()
         #     # row.prop(input,input.boneName)
         #     # row.prop(input,"boneChains")
@@ -211,8 +240,6 @@ class HelloWorldPanel(bpy.types.Panel):
 
         
         row = layout.row()
-        row.operator("hi.go")
-        row.operator("savebonechains.go")
 
 classes = [boneChain,boneChains,boneChainsMap]
 
