@@ -144,7 +144,8 @@ class retarget(object):
         source_rig = bpy.data.objects['root.001']
         target_rig = bpy.data.objects['Armature.001']
 
-        boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
 
         self.sourceArmature = ArmatureBoneInfo(source_rig)
         self.targetArmature = ArmatureBoneInfo(target_rig)
@@ -156,6 +157,15 @@ class retarget(object):
         # mapChains = mapBoneChains(sourceArmature,targetArmature)
         print('test')
 
+
+def register():
+    bpy.utils.register_module(__name__)
+
+def unregister():
+    bpy.utils.unregister_module(__name__)
+
+if __name__ == "__main__":
+    register()
 
     # print(a.boneChains)
 # main()

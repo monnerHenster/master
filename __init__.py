@@ -63,22 +63,31 @@ class enumAdd(bpy.types.PropertyGroup):
 
 # bpy.context.scene.globalvalue = 3
 
+class myBone(bpy.types.PropertyGroup):
+    bone:bpy.props.PointerProperty(type=bpy.types.Action)
 
-class boneChain(bpy.types.PropertyGroup):
-    bone:bpy.props.StringProperty()
+
+class boneList(bpy.types.PropertyGroup):
+    # bone:bpy.props.CollectionProperty(type=bpy.types.PoseBone)
+    name:bpy.props.StringProperty()
+
+class myString(bpy.types.PropertyGroup):
+    string:bpy.props.StringProperty()
 
 class boneChains(bpy.types.PropertyGroup):
     isExtraBone:bpy.props.BoolProperty()
     name: bpy.props.StringProperty()
-    boneChain:bpy.props.CollectionProperty(type=boneChain)
+    boneChain:bpy.props.CollectionProperty(type=boneList)
 
 class boneChainsMap(bpy.types.PropertyGroup):
     # checked: bpy.props.BoolProperty(name="")
     # boneChains: bpy.props.StringProperty()
     boneChains: bpy.props.CollectionProperty(type=boneChains)
-    # boneChains: bpy.context.scene.my_boneChains
+    # boneChains: bpy.context.scene.my_sourceBoneChains
     targetBoneChainsEnum: bpy.props.EnumProperty(items = getItem)
 
+class customeProerty(bpy.types.PropertyGroup):
+    pass
 
 #operator, connected the button that adds the params
 class HiOp(bpy.types.Operator):
@@ -88,62 +97,53 @@ class HiOp(bpy.types.Operator):
     
     def execute(self, context):
         scn = bpy.context.scene
-        scn.my_boneChains.clear()
-        retargetValue = retarget()
-        retargetValue.start()
-        sourceRigBoneChains = retargetValue.sourceArmature.boneChains
-        targetRigBoneChains = retargetValue.targetArmature.boneChains
+        scn.my_sourceBoneChains.clear()
+        # retargetValue = retarget()
+        # retargetValue.start()
+        # sourceRigBoneChains = retargetValue.sourceArmature.boneChains
+        # targetRigBoneChains = retargetValue.targetArmature.boneChains
 
-        print(sourceRigBoneChains)
-        for boneChain in sourceRigBoneChains:
-            item = scn.my_boneChains.add()
-            boneNames = ''
-            for bone in boneChain:
-                boneNames += bone.name
-            item.name = boneNames
+        source_rig = bpy.data.objects['root.001']
+        target_rig = bpy.data.objects['Armature.001']
+
+        # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
         
+        for idx,bone in enumerate(scn.my_ignore_bone_name):
+            boneIgnoreName.append(str(bone.name))
+        self.sourceArmature = ArmatureBoneInfo(source_rig)
+        self.targetArmature = ArmatureBoneInfo(target_rig)
+        # a.boneIgnoreName.append('thigh_twist_01_l')
+        self.sourceArmature.boneIgnoreName += boneIgnoreName
+        self.targetArmature.boneIgnoreName += boneIgnoreName
 
-        # bpy.context.scene.my_boneChainsMap.clear()
-        # item = bpy.context.scene.my_boneChainsMap.add()
-        # # item = bpy.context.scene.my_boneChains.add()
-        # # item.string = 'ddd'
+        # scn.my_customeProperty.my_sourceRigBoneChains = sourceRigBoneChains
 
-        # # item.boneChains = bpy.context.scene.my_boneChains
+        # print(sourceRigBoneChains)
 
-        # item2 = item.boneChains.add()
-        # item3 = item2.boneChain.add()
-        # item3.string = 'ddd'
-        # attr = [a for a in dir(item3) if not a.startswith('__')]
-        # print(dir(item3))
+        setBoneChain(self,context,self.sourceArmature.boneChains,scn.my_sourceBoneChains)
+        setBoneChain(self,context,self.targetArmature.boneChains,scn.my_targetBoneChains)
+
+        # for boneChain in self.sourceArmature.boneChains:
+        #     # print(boneChain)
+        #     item = scn.my_sourceBoneChains.add()
+        #     boneNames = ''
+        #     for bone in boneChain:
+        #         item_boneChain = item.boneChain.add()
+        #         item_boneChain.name = bone.name
+        #         boneNames += item_boneChain.name
+        #     item.name = boneNames
         
-        # for i in attr:
-        #     print(i,getattr(item3,i))
-        # item.boneChains.boneChain = bpy.context.scene.my_boneChain.add()
-        # item.boneChains.boneChain.string = 'boneName'
-
-
-        #add the param to the registered collection
-        # context.scene.boneChainsMap.add().slot = self.slot
-        # i = 0
-        # while i < 6:
-        #     item = context.scene.enum_Add.add()
-        #     item.string = "dddd"+str(i)
-        #     # print(context.scene.enum_Add)
-        #     # item.boneName = str(random.randint(1,100))
-        #     # item.targetBoneChainsEnum =  enumerate([ddd])
-        # #     [
-        # #     ('NONE', 'None', "Flat geometry"),
-        # #     ('GEOM', 'Geometry', "Use z value from shape geometry if exists"),
-        # #     ('FIELD', 'Field', "Extract z elevation value from an attribute field"),
-        # #     ('OBJ', 'Object', "Get z elevation value from an existing ground mesh")
-        # # ]
-        #     i += 1
-        # item = context.scene.boneChainsMap.add()
-        # item.boneName = "aaaa"
-        # context.scene.boneChainsMap.add().checked
-        # context.scene.boneChainsMap.remove(0)
-
         # newItems
+        return {'FINISHED'}
+
+class clearIgnoreBone(bpy.types.Operator):
+    bl_idname = 'clear_ignore_bone.go'
+    bl_label = 'clearIgnoreBone'
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        scn.my_ignore_bone_name.clear()
         return {'FINISHED'}
 
 class SaveBoneChainsOP(bpy.types.Operator):
@@ -152,43 +152,42 @@ class SaveBoneChainsOP(bpy.types.Operator):
     
     def execute(self, context):
         #add the param to the registered collection
-        # context.scene.boneChainsMap.add().slot = self.slot
-        # idxNeedRmove = []
-
-        # for idx,item in enumerate(bpy.context.scene.boneChainsMap):
-        #     if item.checked:
-
-        #         # print(item.boneName)
-        #         # print(idx)
-        #         idxNeedRmove.append(idx)
-        # i = 0
-        # for idx in idxNeedRmove:
-        #     idx -= i
-        #     bpy.context.scene.boneChainsMap.remove(idx)
-        #     i += 1
         # print(idxNeedRmove)
         scn = bpy.context.scene
-        for idx,boneChains in enumerate(scn.my_boneChainsMap):
-            # print(dir(boneChains))
-            print(idx)
-        # print(dir(scn.my_boneChainsMap.remove))
-        # print((scn.my_boneChainsMap.remove.__str__))
-            # for idx2,boneChain in enumerate(boneChains):
-            #     if boneChain.isExtraBone == True:
-            #         pass
 
+        item = scn.my_customeProperty.add()
 
-        # for idx,item in enumerate(bpy.context.scene.globalvalue):
-        #     pass
-        #     print(item.string)
-        # context.scene.boneChainsMap.add().checked
+        # for idx,item in enumerate(scn.my_customeProperty):
+        #     attr = [a for a in dir(item)]
+        #     for b in attr:
+        #         print(b,getattr(item,b))
+
+        for idx,boneChain in enumerate(scn.my_sourceBoneChains):
+            if boneChain.isExtraBone == True:
+                for idx,bone in enumerate(boneChain.boneChain):
+                    item = scn.my_ignore_bone_name.add()
+                    item.name = bone.name
+                    # print(item.bone)
+                    # print(dir(bone))
+                    # print(type(bone))
+                    # for i in bone:
+                    #     print(i)
+                    # item.bone = bone.bone
+                    # print(item.item.bone)
+                    break
+                # boneChain.remove()
+        for idx,bone in enumerate(scn.my_ignore_bone_name):
+            print(bone.name,idx)
+        # print
+      
+
         # context.scene.boneChainsMap.remove(0)
         return {'FINISHED'}        
 
 class HelloWorldPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
-    bl_label = "HI"
-    bl_category = "HI"
+    bl_label = "BoneChains"
+    bl_category = "AniTool"
     bl_idname = "HI_PT_Panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -202,82 +201,99 @@ class HelloWorldPanel(bpy.types.Panel):
         row = layout.row()
         row.operator("hi.go")
         row.operator("savebonechains.go")
+        row.operator("clear_ignore_bone.go")
         # row.label(text="Hello world!", icon='WORLD_DATA')
-        # item = context.scene.enum_ 
-        #use the registered collection shared with the operator to built the rest of the panel
-        # for index, input in enumerate(context.scene.my_boneChainsMap):
-        #     layout.label(text='dddd')
-        #     for idx,input2 in enumerate(input.boneChains):
-        #         row2 =layout.row()
-        #         row2.prop(input2,'boneChain')
-        #         for idx,input3 in enumerate(input2.boneChain):
-        #         # print(input2)
-        #         # attr = ( a for a in dir(input2) if not a.startswith('__'))
-        #         # for b in attr:
+      
         #         #     print(b,getattr(input2,b))
-        for idx,item in enumerate(scn.my_boneChains):
-            row = layout.row(align=False)
-            row.alignment = 'LEFT'
-            row.prop(item,'isExtraBone')
-            row.label(text=item.name)
-            # row.split(align=True,factor=0.3)
-            # row.separator()
-        #             row3 = layout.row()
-        #     # row.prop(input,input.boneName)
-        #     # row.prop(input,"boneChains")
-        #             row3.prop(input3,"string")
-            # row.prop(input,"checked")
-            # row.label(text="boneName")
-            # row.label(text=input.boneName)
-            # row.prop(input,"targetBoneChainsEnum",text='')
-            # layout.prop(input,text=input.boneName)
-            # layout.prop(text=input.boneName)
-            # row.prop_search(input, "materialname",bpy.data, "materials")
-            
-            # attr = [a for a in dir(input) if not a.startswith('__')]
-            # for i in attr:
+        layout.label(text='sourceBoneChains')
+
+        drawBoneChains(self,context,scn.my_sourceBoneChains)
+        # for idx,item in enumerate(scn.my_sourceBoneChains):
+        #     row = layout.row(align=False)
+        #     row.alignment = 'LEFT'
+        #     row.prop(item,'isExtraBone')
+        #     row.label(text=item.name)
+        #     row.split(align=True,factor=0.3)
+ 
             #     print(i,getattr(input,i))
+        layout.label(text='targetBoneChains')
+        drawBoneChains(self,context,scn.my_targetBoneChains)
 
         
         row = layout.row()
 
-classes = [boneChain,boneChains,boneChainsMap]
+class HelloWorldPanel2(bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "Remap"
+    bl_category = "AniTool"
+    bl_idname = "HI_PT_Panel4"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+
+    def draw(self, context: 'Context'):
+        pass
+
+classes = [myBone,
+           boneList,
+           boneChains,
+           boneChainsMap,
+           customeProerty,
+           myString,
+           clearIgnoreBone,
+           HelloWorldPanel2,
+           HelloWorldPanel,
+           SaveBoneChainsOP,
+           HiOp,
+           enumAdd]
+
+def setBoneChain(self,context,boneChains,scnBoneChains):
+        scn = bpy.context.scene
+        for boneChain in boneChains:
+            # print(boneChain)
+            item = scnBoneChains.add()
+            boneNames = ''
+            for bone in boneChain:
+                item_boneChain = item.boneChain.add()
+                item_boneChain.name = bone.name
+                boneNames += item_boneChain.name
+            item.name = boneNames
+
+def drawBoneChains(self,context,boneChains):
+        # scn = bpy.context.scene
+        layout = self.layout
+        for idx,item in enumerate(boneChains):
+            row = layout.row(align=False)
+            row.alignment = 'LEFT'
+            row.prop(item,'isExtraBone')
+            row.label(text=item.name)
+            row.split(align=True,factor=0.3)
 
 def register():
-    bpy.utils.register_class(HelloWorldPanel)
-    bpy.utils.register_class(SaveBoneChainsOP)
-    bpy.utils.register_class(HiOp)
-    # bpy.utils.register_class(boneChainsMap)
-    bpy.utils.register_class(enumAdd)
     for cls in classes:
         bpy.utils.register_class(cls)
-    # bpy.utils.register_class(boneChain)
-    # bpy.utils.register_class(boneChains)
-    #register a collection of params so that the operator and panel can share them
-    # bpy.types.Scene.boneChainsMap = bpy.props.CollectionProperty(type=boneChainsMap)
+
     bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
-    bpy.types.Scene.my_boneChain = bpy.props.CollectionProperty(type=boneChain)
-    bpy.types.Scene.my_boneChains = bpy.props.CollectionProperty(type=boneChains)
-    # bpy.types.Scene.my_boneChains = bpy.props.CollectionProperty(type=boneChains)
-    bpy.types.Scene.my_boneChainsMap = bpy.props.CollectionProperty(type=boneChainsMap)
+    bpy.types.Scene.my_sourceBoneChain = bpy.props.CollectionProperty(type=boneList)
+    bpy.types.Scene.my_sourceBoneChains = bpy.props.CollectionProperty(type=boneChains)
+    bpy.types.Scene.my_sourceBoneChainsMap = bpy.props.CollectionProperty(type=boneChainsMap)
+    bpy.types.Scene.my_targetBoneChain = bpy.props.CollectionProperty(type=boneList)
+    bpy.types.Scene.my_targetBoneChains = bpy.props.CollectionProperty(type=boneChains)
+    bpy.types.Scene.my_targetBoneChainsMap = bpy.props.CollectionProperty(type=boneChainsMap)
+    bpy.types.Scene.my_ignore_bone_name = bpy.props.CollectionProperty(type=boneList)
 
 
 
 def unregister():
-    bpy.utils.unregister_class(HelloWorldPanel)
-    bpy.utils.unregister_class(HiOp)
-    bpy.utils.unregister_class(SaveBoneChainsOP)
-    bpy.utils.unregister_class(enumAdd)
-    # bpy.utils.unregister_class(boneChainsMap)
     for cls in classes:
         bpy.utils.unregister_class(cls)
-    # bpy.utils.unregister_class(myString)
-    # bpy.utils.unregister_class(myString)
-    # del bpy.types.Scene.boneChainsMap
     del bpy.types.Scene.enum_Add
-    del bpy.types.Scene.my_boneChains
-    del bpy.types.Scene.my_boneChainsMap
-    del bpy.types.Scene.my_boneChain
+    del bpy.types.Scene.my_sourceBoneChains
+    del bpy.types.Scene.my_sourceBoneChainsMap
+    del bpy.types.Scene.my_sourceBoneChain
+    del bpy.types.Scene.my_targetBoneChains
+    del bpy.types.Scene.my_targetBoneChainsMap
+    del bpy.types.Scene.my_targetBoneChain
+    del bpy.types.Scene.my_ignore_bone_name
 
 if __name__ == "__main__":
     register()
