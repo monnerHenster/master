@@ -43,10 +43,41 @@ bl_info = {
 
 
 def getItem(self,context):
+    # items = (
+    #     ("humanoid", "Humanoid", "Humanoid rig type, simple bones hierarchy to ensure animation retargetting"),
+    #     ("mped", "Universal", "Universal rig type, simple bones hierarchy for any creature (dog, spider...)")
+    #     )
     items = []
-    for item in bpy.context.scene.enum_Add.values():
-        items.append((item.string,item.string,''))
+    for item in bpy.context.scene.my_targetBoneChains.values():
+        Bones = ''
+        Bones += item.IsSelected
+        for bone in item.boneChain.values():
+            Bones += bone.name
+        items.append((Bones,Bones,''))
+    # print(items)
+    # items = []
+    
     return items
+
+def get_enum(self):
+    import random
+    # return value
+    # print(self['testprop'])
+    return random.randint(1, 1)
+
+
+def set_enum(self, value):
+    print (dir(self))
+    print(self.BoneChain)
+    print(self.name)
+    # print(self.value)
+    # print(self.BoneChain.values()[0])
+    self.value = value
+    # self.BoneChain = bpy.context.scene.my_enum_bone_chain.values()[value]
+    # self.BoneChain = 'mixamorig:RightUpLegmixamorig:RightLegmixamorig:RightFootmixamorig:RightToeBasemixamorig:RightToe_End'
+    # self['testprop'] = value
+    print("setting value", value)
+
 
 class enumAdd(bpy.types.PropertyGroup):
     # @classmethod
@@ -59,6 +90,11 @@ class enumAdd(bpy.types.PropertyGroup):
 
     string : bpy.props.StringProperty()
 
+class EnumBoneCHain(bpy.types.PropertyGroup):
+    BoneChain:bpy.props.EnumProperty(items=getItem)
+    IsSelected:bpy.props.BoolProperty()
+    # BoneChain:bpy.props.EnumProperty(items=getItem,get=get_enum, set=set_enum)
+
 #define what the property in the colection will look like
 
 # bpy.context.scene.globalvalue = 3
@@ -69,6 +105,7 @@ class myBone(bpy.types.PropertyGroup):
 
 class boneList(bpy.types.PropertyGroup):
     # bone:bpy.props.CollectionProperty(type=bpy.types.PoseBone)
+    index:bpy.props.IntProperty()
     name:bpy.props.StringProperty()
 
 class myString(bpy.types.PropertyGroup):
@@ -76,8 +113,11 @@ class myString(bpy.types.PropertyGroup):
 
 class boneChains(bpy.types.PropertyGroup):
     isExtraBone:bpy.props.BoolProperty()
+    IsSelected:bpy.props.StringProperty()
     name: bpy.props.StringProperty()
     boneChain:bpy.props.CollectionProperty(type=boneList)
+    boneChainString:bpy.props.StringProperty()
+    index:bpy.props.IntProperty()
 
 class boneChainsMap(bpy.types.PropertyGroup):
     # checked: bpy.props.BoolProperty(name="")
@@ -98,10 +138,6 @@ class HiOp(bpy.types.Operator):
     def execute(self, context):
         scn = bpy.context.scene
         scn.my_sourceBoneChains.clear()
-        # retargetValue = retarget()
-        # retargetValue.start()
-        # sourceRigBoneChains = retargetValue.sourceArmature.boneChains
-        # targetRigBoneChains = retargetValue.targetArmature.boneChains
 
         source_rig = bpy.data.objects['root.001']
         target_rig = bpy.data.objects['Armature.001']
@@ -117,22 +153,15 @@ class HiOp(bpy.types.Operator):
         self.sourceArmature.boneIgnoreName += boneIgnoreName
         self.targetArmature.boneIgnoreName += boneIgnoreName
 
-        # scn.my_customeProperty.my_sourceRigBoneChains = sourceRigBoneChains
-
-        # print(sourceRigBoneChains)
-
         setBoneChain(self,context,self.sourceArmature.boneChains,scn.my_sourceBoneChains)
         setBoneChain(self,context,self.targetArmature.boneChains,scn.my_targetBoneChains)
 
-        # for boneChain in self.sourceArmature.boneChains:
-        #     # print(boneChain)
-        #     item = scn.my_sourceBoneChains.add()
-        #     boneNames = ''
-        #     for bone in boneChain:
-        #         item_boneChain = item.boneChain.add()
-        #         item_boneChain.name = bone.name
-        #         boneNames += item_boneChain.name
-        #     item.name = boneNames
+        sortBoneChains(self,context,scn.my_sourceBoneChains)
+        sortBoneChains(self,context,scn.my_targetBoneChains)
+
+        scn.my_enum_bone_chain.clear()
+        for item in scn.my_sourceBoneChains.values():
+            scn.my_enum_bone_chain.add()
         
         # newItems
         return {'FINISHED'}
@@ -146,6 +175,86 @@ class clearIgnoreBone(bpy.types.Operator):
         scn.my_ignore_bone_name.clear()
         return {'FINISHED'}
 
+class sortBoneChainsOP(bpy.types.Operator):
+    bl_idname = 'sort_bone_chains.go'
+    bl_label = 'sortBoneChains'
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        scn.my_ignore_bone_name.clear()
+        return {'FINISHED'}
+    
+class autoSetChainOP(bpy.types.Operator):
+    bl_idname = 'auto_set_chain.go'
+    bl_label = 'autoSetChainOP'
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        selectedChain = []
+        freeChain = [ a.name for a in scn.my_targetBoneChains]
+
+        # for targetChain in scn.my_enum_bone_chain:
+        #     if targetChain.BoneChain in freeChain:
+        #         freeChain.remove(targetChain.BoneChain)
+        #     else:
+        #         targetChain.BoneChain = freeChain[0]
+        #         # freeChain.remove(0)
+        #         del freeChain[0]
+
+        FixChain = []
+        for item in scn.my_enum_bone_chain:
+            if item.IsSelected == True :
+                FixChain.append(item.BoneChain)
+                # targetChain.BoneChain='mixamorig:Hips'
+        print(FixChain)
+        # map(lambda i: scn.my_targetBoneChains.remove(scn.my_targetBoneChains.find(i)),FixChain)
+        for item in FixChain:
+            idx = scn.my_targetBoneChains.find(item)
+            scn.my_targetBoneChains[idx].IsSelected = 'Selected____'
+        # scn.my_enum_bone_chain[0].BoneChain = '22'
+        # print(scn.my_enum_bone_chain[0].BoneChain)
+        for a in scn.my_targetBoneChains:
+            print(a )
+        return {'FINISHED'}
+
+class CopyRotationOP(bpy.types.Operator):
+    bl_idname = 'copy_rotation.go'
+    bl_label = 'CopyRotationOP'
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        for idx,BoneChain in enumerate(scn.my_sourceBoneChains):
+            for idx2,Bone in enumerate(BoneChain.boneChain):
+                # print(Bone.name)
+                # print(idx2)
+                print(scn.my_enum_bone_chain[idx].BoneChain)
+                # print(scn.my_targetBoneChains[idx])
+        return {'FINISHED'}
+
+def sortBoneChains(self,context,scnList):
+    newSortList = []
+    for boneChain in scnList.values():
+        boneList = []
+        for bone in boneChain.boneChain.values():
+
+            boneList.append(bone.name)
+        newSortList.append(boneList)
+    newSortList.sort()
+
+    scnList.clear()
+
+    for boneChain in newSortList:
+        item = scnList.add()
+        chainName = ''
+        for bone in boneChain:
+            item2 = item.boneChain.add()
+            item2.name = bone
+            chainName += bone
+        item.name = chainName
+
+
+
+
 class SaveBoneChainsOP(bpy.types.Operator):
     bl_idname = 'savebonechains.go'
     bl_label = 'saveBoneChains'
@@ -154,8 +263,9 @@ class SaveBoneChainsOP(bpy.types.Operator):
         #add the param to the registered collection
         # print(idxNeedRmove)
         scn = bpy.context.scene
+        scn.my_enum_bone_chain.add()
 
-        item = scn.my_customeProperty.add()
+        # item = scn.my_customeProperty.add()
 
         # for idx,item in enumerate(scn.my_customeProperty):
         #     attr = [a for a in dir(item)]
@@ -167,17 +277,12 @@ class SaveBoneChainsOP(bpy.types.Operator):
                 for idx,bone in enumerate(boneChain.boneChain):
                     item = scn.my_ignore_bone_name.add()
                     item.name = bone.name
-                    # print(item.bone)
-                    # print(dir(bone))
-                    # print(type(bone))
-                    # for i in bone:
-                    #     print(i)
-                    # item.bone = bone.bone
-                    # print(item.item.bone)
+
                     break
                 # boneChain.remove()
         for idx,bone in enumerate(scn.my_ignore_bone_name):
-            print(bone.name,idx)
+            pass
+            # print(bone.name,idx)
         # print
       
 
@@ -196,15 +301,6 @@ class HelloWorldPanel(bpy.types.Panel):
         layout = self.layout
         scn = bpy.context.scene
 
-        obj = context.object
-
-        row = layout.row()
-        row.operator("hi.go")
-        row.operator("savebonechains.go")
-        row.operator("clear_ignore_bone.go")
-        # row.label(text="Hello world!", icon='WORLD_DATA')
-      
-        #         #     print(b,getattr(input2,b))
         layout.label(text='sourceBoneChains')
 
         drawBoneChains(self,context,scn.my_sourceBoneChains)
@@ -219,9 +315,6 @@ class HelloWorldPanel(bpy.types.Panel):
         layout.label(text='targetBoneChains')
         drawBoneChains(self,context,scn.my_targetBoneChains)
 
-        
-        row = layout.row()
-
 class HelloWorldPanel2(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "Remap"
@@ -231,9 +324,45 @@ class HelloWorldPanel2(bpy.types.Panel):
     bl_region_type = 'UI'
 
     def draw(self, context: 'Context'):
-        pass
+        scn = bpy.context.scene
+        split = self.layout.split(factor=0.3)
+        column = split.column()
+        column.label(text = 'SourceChain')
+        for item in scn.my_sourceBoneChains:
+            row = column.row()
+            row.label(text=item.name)
 
-classes = [myBone,
+        split = split.split(factor=1)
+        column = split.column()
+        column.label(text = 'TargetChain')
+        for idx,item in enumerate(scn.my_sourceBoneChains):
+            row=column.row()
+            row.alignment = 'LEFT'
+            row.prop(scn.my_enum_bone_chain[idx],'IsSelected')
+            row.prop(scn.my_enum_bone_chain.values()[idx],'BoneChain',text='')
+
+class OpPanel(bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "Operator"
+    bl_category = "AniTool"
+    bl_idname = "HI_PT_Panel5"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+
+    def draw(self, context: 'Context'):
+        row = self.layout.row()
+        row.operator("hi.go")
+        row.operator("savebonechains.go")
+        row.operator("clear_ignore_bone.go")
+        row = self.layout.row()
+        row.operator("auto_set_chain.go")
+        row.operator("copy_rotation.go")
+
+classes = [CopyRotationOP,
+           autoSetChainOP,
+           sortBoneChainsOP,
+           OpPanel,
+           myBone,
            boneList,
            boneChains,
            boneChainsMap,
@@ -244,9 +373,11 @@ classes = [myBone,
            HelloWorldPanel,
            SaveBoneChainsOP,
            HiOp,
-           enumAdd]
+           enumAdd,
+           EnumBoneCHain]
 
 def setBoneChain(self,context,boneChains,scnBoneChains):
+        scnBoneChains.clear()
         scn = bpy.context.scene
         for boneChain in boneChains:
             # print(boneChain)
@@ -280,6 +411,7 @@ def register():
     bpy.types.Scene.my_targetBoneChains = bpy.props.CollectionProperty(type=boneChains)
     bpy.types.Scene.my_targetBoneChainsMap = bpy.props.CollectionProperty(type=boneChainsMap)
     bpy.types.Scene.my_ignore_bone_name = bpy.props.CollectionProperty(type=boneList)
+    bpy.types.Scene.my_enum_bone_chain = bpy.props.CollectionProperty(type=EnumBoneCHain)
 
 
 
@@ -294,6 +426,7 @@ def unregister():
     del bpy.types.Scene.my_targetBoneChainsMap
     del bpy.types.Scene.my_targetBoneChain
     del bpy.types.Scene.my_ignore_bone_name
+    del bpy.types.Scene.my_enum_bone_chain
 
 if __name__ == "__main__":
     register()
