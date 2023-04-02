@@ -10,7 +10,7 @@ class boneIndex():
 
 class ArmatureBoneInfo():
     def __init__(self,armature:bpy.types.Object) -> None:
-        self.boneChains = []
+        self.bone_chains = []
         self.armature = armature
         self.rootBones:list[bpy.types.PoseBone]=[]
         self.findRootBones()
@@ -31,7 +31,7 @@ class ArmatureBoneInfo():
         for boneName in boneIgnoreName:
             if boneName in  self.armature.pose.bones:
                 self.boneIgnore.append(self.armature.pose.bones[boneName])
-        self.boneChains = []
+        self.bone_chains = []
         self.findBoneChains()
     # @boneIgnoreName.setter
     # def boneIgnoreName
@@ -58,12 +58,12 @@ class ArmatureBoneInfo():
                 # newBone.index = 0
                 self.rootBones.append(orginBone)
 
-    boneChain = [boneIndex] 
-    boneChains = []
+    bone_chain = [boneIndex] 
+    bone_chains = []
 
     def findBoneChain(self,bone:bpy.types.PoseBone):
-        boneChain = []
-        boneChain.append(bone)#将传进的骨头作为链的第一个
+        bone_chain = []
+        bone_chain.append(bone)#将传进的骨头作为链的第一个
         # print(bone)
         rBones:list[bpy.types.PoseBone] = bone.children
         rBoneNeedRevmoe = []
@@ -77,12 +77,12 @@ class ArmatureBoneInfo():
                     rBoneNeedRevmoe.append(rbone)
             rBones = list(set(rBones)-set(rBoneNeedRevmoe))#真实的常规骨头
             if len(rBones) == 1:#如果只有一个常规子骨头
-                boneChain.append(rBones[0])
+                bone_chain.append(rBones[0])
             # bone = rBones[0]
                 rBones = rBones[0].children
             else:
                 break
-        self.boneChains.append(boneChain)
+        self.bone_chains.append(bone_chain)
         
         return rBones
 
@@ -91,17 +91,17 @@ class ArmatureBoneInfo():
         # boneChildren = self.rootBones
         boneChildren = list(set(self.rootBones)-set(self.boneIgnore))
         boneFinish = []
-        boneChainBraches = []
+        bone_chainBraches = []
         while safety <= 999 and boneChildren:
             for bone in boneChildren:
                 # if bone.name == 'Neck':
                 #     pass
-                boneChainBraches = self.findBoneChain(bone)
+                bone_chainBraches = self.findBoneChain(bone)
                 boneFinish.append(bone)
-                if boneChainBraches:
+                if bone_chainBraches:
                     break
-            boneChildren += boneChainBraches
-            boneChainBraches = []
+            boneChildren += bone_chainBraches
+            bone_chainBraches = []
             boneChildren = list(set(boneChildren) - set(boneFinish))
             boneFinish = []
             safety += 1
@@ -120,13 +120,13 @@ class mapBoneChains():
         self.map()
 
     def map(self):
-        for chain in self.targetBoneInfo.boneChains:
-            boneChain = mapBoneChain(chain,self.sourceBoneInfo.boneChains[self.chooseChain()])
-            self.mapchains.append(boneChain)
+        for chain in self.targetBoneInfo.bone_chains:
+            bone_chain = mapBoneChain(chain,self.sourceBoneInfo.bone_chains[self.chooseChain()])
+            self.mapchains.append(bone_chain)
 
     def chooseChain(self):
         i = 0
-        for chain in self.sourceBoneInfo.boneChains:
+        for chain in self.sourceBoneInfo.bone_chains:
             print(i,' ',chain)
         userChoose = input()
         return userChoose
@@ -167,7 +167,7 @@ def unregister():
 if __name__ == "__main__":
     register()
 
-    # print(a.boneChains)
+    # print(a.bone_chains)
 # main()
 # print(a.rootBones)
 
