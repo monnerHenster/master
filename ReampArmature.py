@@ -2,6 +2,13 @@ import bpy
 import numpy
 from mathutils import *
 
+def dict_subtract(origin_dict:list,target_dict:list):
+    temp_origin_dict = origin_dict
+    for dict1 in origin_dict:
+        for dict2 in target_dict:
+            if dict1 == dict2:
+                temp_origin_dict.remove(dict1)
+    return temp_origin_dict
 
 class boneIndex():
     def __init__(self) -> None:
@@ -12,14 +19,12 @@ class ArmatureBoneInfo():
     def __init__(self,armature:bpy.types.Object) -> None:
         self.bone_chains = []
         self.armature = armature
-        self.rootBones:list[bpy.types.PoseBone]=[]
+        # self.rootBones:list[bpy.types.PoseBone]=[]
+        self.rootBones:dict[str:int,str:bpy.types.PoseBone] = []
         self.findRootBones()
         self._boneIgnoreName:list[str] = []
         self.boneIgnore:list[bpy.types.PoseBone] = []
         self.findBoneChains()
-        # print(self.rootBones[0].bone.child)
-        # print(self.rootBones[0].bone.children)
-        # self.findBoneChain(self.rootBones[0].bone)
     
     @property
     def boneIgnoreName(self):
@@ -61,7 +66,7 @@ class ArmatureBoneInfo():
     bone_chain = [boneIndex] 
     bone_chains = []
 
-    def findBoneChain(self,bone:bpy.types.PoseBone):
+    def findBoneChain(self,chain_layer,bone:bpy.types.PoseBone):
         bone_chain = []
         bone_chain.append(bone)#将传进的骨头作为链的第一个
         # print(bone)
@@ -71,8 +76,8 @@ class ArmatureBoneInfo():
         while len(rBones):
             for rbone in rBones:
                 rbone:bpy.types.PoseBone
-                if rbone.name == 'thigh_twist_01_l':
-                    pass
+                # if rbone.name == 'thigh_twist_01_l':
+                #     pass
                 if rbone.name in self.boneIgnoreName:
                     rBoneNeedRevmoe.append(rbone)
             rBones = list(set(rBones)-set(rBoneNeedRevmoe))#真实的常规骨头
@@ -82,29 +87,41 @@ class ArmatureBoneInfo():
                 rBones = rBones[0].children
             else:
                 break
-        self.bone_chains.append(bone_chain)
+        self.bone_chains.append({'index':chain_layer,'chain': bone_chain})
+
+        rBones = [{'index':chain_layer+1,"chain":bone} for bone in rBones]
         
         return rBones
 
     def findBoneChains(self):
-        safety = 0
+        chain_layer = 0
         # boneChildren = self.rootBones
+
         boneChildren = list(set(self.rootBones)-set(self.boneIgnore))
+        bone_tracking = []
+        for bone in boneChildren:
+            bone_tracking.append({"index":chain_layer,"chain":bone})
         boneFinish = []
         bone_chainBraches = []
-        while safety <= 999 and boneChildren:
-            for bone in boneChildren:
+        while  bone_tracking:
+            bone = bone_tracking[0]
+            # for bone in bone_tracking:
                 # if bone.name == 'Neck':
                 #     pass
-                bone_chainBraches = self.findBoneChain(bone)
-                boneFinish.append(bone)
-                if bone_chainBraches:
-                    break
-            boneChildren += bone_chainBraches
+            bone_chainBraches = self.findBoneChain(bone['index'],bone['chain'])
+            boneFinish.append(bone)
+                # if len(bone_chainBraches) == 1:
+                #     break
+            bone_tracking += bone_chainBraches
             bone_chainBraches = []
-            boneChildren = list(set(boneChildren) - set(boneFinish))
+            new_bone_tracking = bone_tracking
+            for dict1 in bone_tracking:
+                for dict2 in boneFinish:
+                    if dict1 == dict2:
+                        new_bone_tracking.remove(dict1)
+
+            bone_tracking = new_bone_tracking
             boneFinish = []
-            safety += 1
 
 class mapBoneChain():
     def __init__(self,sourceChain,targetChain) -> None:
@@ -141,11 +158,11 @@ class retarget(object):
     ddd = 1
     
     def start(self):
-        source_rig = bpy.data.objects['root.001']
-        target_rig = bpy.data.objects['Armature.001']
+        source_rig = bpy.data.objects['root']
+        target_rig = bpy.data.objects['Armature']
 
-        # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
-        boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        # boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
 
         self.sourceArmature = ArmatureBoneInfo(source_rig)
         self.targetArmature = ArmatureBoneInfo(target_rig)
@@ -156,6 +173,7 @@ class retarget(object):
 
         # mapChains = mapBoneChains(sourceArmature,targetArmature)
         print('test')
+        print(self.sourceArmature.bone_chains)
 
 
 def register():
@@ -168,22 +186,8 @@ if __name__ == "__main__":
     register()
 
     # print(a.bone_chains)
+
+def main():
+    a = retarget()
+    a.start()
 # main()
-# print(a.rootBones)
-
-# print(type(source_rig))
-
-# for bone in source_rig.pose.bones:
-#     print (type(bone))
-#     print(bone.children)
-#     break
-
-# print('test')
-
-# for bone in target_rig.pose.bones:
-#     # for cst in bone.constraints:
-#     #     print(cst.name)
-#     #     # bpy.ops.constraint.apply(constraint=cst.name)
-#     cst = bone.constraints.new('COPY_ROTATION')
-#     cst.target = source_rig
-#     cst.subtarget = bone.name

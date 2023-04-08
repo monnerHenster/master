@@ -26,21 +26,10 @@ bl_info = {
     "warning" : "",
     "category" : "Generic"
 }
-# bpy.props.
-# 通过remap获得bonechains信息
-# 将信息储存到scene的collisionproperty中
-# 用两个collection来保存bonechain，因为是一个数列里面还有一个数列
-# 用check和label来表示source中的chain
-# 然后去除对应的不要的chain
-# 最后用label source enumerate target来匹配chain的手动选择
-# 用新的collection来做匹配关系
-# 按照chain的对应方式来添加copy rotation
-# 
-# 待加入流程：
-# auto scale
-# chain的bone的数量怎么一一对应中
-# 做智能化对应 
 
+
+my_source_chains = []
+my_target_chains = []
 
 def set_bone_chain(self,context,BoneChains,scnBoneChains):
         scnBoneChains.clear()
@@ -202,6 +191,7 @@ def build_bones_map():
                 print("error bone",bone_item.name)
 
     # for item_bone in scn.my_bones_map:
+
     #     print(item_bone.source_bone,item_bone.name)
 
 def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
@@ -385,6 +375,65 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
                 cns_root.name += '_loc_REMAP'                 
                 cns_root.owner_space = cns_root.target_space = 'WORLD'
 
+def set_string(self,value):
+    # print(value)
+    # print(dir(self))
+    self.my_test_string = value
+    print(self.my_test_string)
+    self['abc'] = value
+    pass
+
+def get_string(self):
+    # print(value)
+    # print(dir(self))
+    # print(self.my_test_string)
+    return self['abc']
+    return self.my_test_string
+
+def update_string(self,context):
+    print('update')
+
+def recoerd_old_value():
+    scn = bpy.context.scene
+    for item in scn.my_chain_map:
+        item.old_name = item.name
+
+def filter_name():
+    scn = bpy.context.scene
+    chain_map = scn.my_chain_map
+    name_need_change = []
+    name_all = []
+    global my_target_chains
+
+    for item in my_target_chains:
+        name_all.append(','.join(a.name for a in item['chain']))
+
+    for item in chain_map:
+        if item.old_name != item.name:
+            name_need_change.append(item.name)
+
+    name_all = list(set(name_all)-set(name_need_change))
+
+    idx_need_change = []
+    for idx,item in enumerate(chain_map):
+        if item.name in name_need_change and item.name == item.old_name:
+            idx_need_change.append(idx)
+        elif item.name in name_all :
+            name_all.remove(item.name)
+
+    for idx in idx_need_change:
+        chain_map[idx].name = name_all[0]
+        name_all.pop(0)
+    recoerd_old_value()
+
+
+
+    
+
+
+class TestStringFunction(bpy.types.PropertyGroup):
+    test_string:bpy.props.StringProperty(set=None)
+
 class enumAdd(bpy.types.PropertyGroup):
     # @classmethod
     # def register(cls):
@@ -430,7 +479,11 @@ class BoneChainsList(bpy.types.PropertyGroup):
 
 class ChainMap(bpy.types.PropertyGroup):
     is_root:bpy.props.BoolProperty()
+    index:bpy.props.IntProperty()
     source_chain: bpy.props.StringProperty()
+    name:bpy.props.StringProperty(update=update_string)
+    old_name:bpy.props.StringProperty()
+    
 
 class BonesMap(bpy.types.PropertyGroup):
     source_bone: bpy.props.StringProperty()
@@ -452,7 +505,6 @@ class BuildChains(bpy.types.Operator):
         scn.my_target_rig = bpy.data.objects['Armature']
         # target_rig = bpy.data.objects['Armature.001']
 
-        print(scn.my_target_rig)
         # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
         boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
         
@@ -464,11 +516,19 @@ class BuildChains(bpy.types.Operator):
         self.sourceArmature.boneIgnoreName += boneIgnoreName
         self.targetArmature.boneIgnoreName += boneIgnoreName
 
-        set_bone_chain(self,context,self.sourceArmature.bone_chains,scn.my_source_chains)
-        set_bone_chain(self,context,self.targetArmature.bone_chains,scn.my_target_chains)
+        global my_source_chains
+        my_source_chains = self.sourceArmature.bone_chains
 
-        sortBoneChains(self,context,scn.my_source_chains)
-        sortBoneChains(self,context,scn.my_target_chains)
+        global my_target_chains
+        my_target_chains = self.targetArmature.bone_chains
+
+        # print(my_source_chains)
+
+        # set_bone_chain(self,context,self.sourceArmature.bone_chains,scn.my_source_chains)
+        # set_bone_chain(self,context,self.targetArmature.bone_chains,scn.my_target_chains)
+
+        # sortBoneChains(self,context,scn.my_source_chains)
+        # sortBoneChains(self,context,scn.my_target_chains)
 
         scn.my_enum_bone_chain.clear()
         for item in scn.my_source_chains.values():
@@ -527,7 +587,10 @@ class sortBoneChainsOP(bpy.types.Operator):
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
-        scn.my_ignore_bone_name.clear()
+
+        filter_name()
+        scn.my_test_string = '222'
+        # print(scn.my_test_string)
         return {'FINISHED'}
     
 class autoSetChainOP(bpy.types.Operator):
@@ -577,20 +640,37 @@ class BuildList(bpy.types.Operator):
         scn.my_target_bone_chains_list.clear()
         scn.my_chain_map.clear()
 
-        for item in scn.my_target_chains:
-            bone_chains = scn.my_target_bone_chains_list.add()
-            for item in scn.my_target_chains:
+        # for item in scn.my_target_chains:
+        #     bone_chains = scn.my_target_bone_chains_list.add()
+        #     for item in scn.my_target_chains:
 
-                item2 = bone_chains.bone_chains.add()
-                item2.name = item.name
+        #         item2 = bone_chains.bone_chains.add()
+        #         item2.name = item.name
         
-        for bone_chain in scn.my_source_chains:
-            item = scn.my_chain_map.add()
-            item.source_chain = bone_chain.name
+        # for bone_chain in scn.my_source_chains:
+        #     item = scn.my_chain_map.add()
+        #     item.source_chain = bone_chain.name
 
-        # for item in scn.my_target_bone_chains_list[0]:
-        #     print(item.name)
-        # print(dir(scn.my_target_bone_chains_list[0]))
+
+        for bone_chain,target_chain in zip(my_source_chains,my_target_chains):
+            item = scn.my_chain_map.add()
+            item.index = bone_chain['index']
+            source_chain = ','.join([a.name for a in bone_chain['chain']])
+            item.source_chain = source_chain
+            target_chain = ','.join([a.name for a in target_chain['chain']])
+            # print(target_chain)
+            item.name = target_chain
+
+            bone_chains = scn.my_target_bone_chains_list.add()
+            for chain in [a['chain'] for a in my_target_chains if a['index'] == bone_chain['index']]:
+                item_list = bone_chains.bone_chains.add()
+                item_list.name = ','.join([a.name for a in chain])
+            # print(scn.my_target_bone_chains_list)
+
+        for bone_chain in scn.my_chain_map:
+            item.old_name = item.name
+
+        recoerd_old_value()
 
         return {'FINISHED'}
 
@@ -715,6 +795,7 @@ class OpPanel(bpy.types.Panel):
         row.operator("build_chains.go")
         row.operator("savebonechains.go")
         row.operator("clear_ignore_bone.go")
+        row.operator("sort_bone_chains.go")
         row = self.layout.row()
         row.operator("auto_set_chain.go")
         row.operator("build_list.go")
@@ -739,7 +820,7 @@ class ChainList(bpy.types.Panel):
         #     row.label(text=scn.my_chain_map[idx].source_chain)
         #     row.prop_search(scn.my_chain_map[idx],'name',scn.my_target_bone_chains_list[idx],'bone_chains',text='')
 
-        if scn.my_chain_map_index > 0 :
+        if scn.my_chain_map_index >= 0 :
             box = self.layout.box()
             row = box.row(align=True)
 
@@ -748,11 +829,15 @@ class ChainList(bpy.types.Panel):
             row = box.row(align=True)
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
 
+            # print(scn.my_target_bone_chains_list[scn.my_chain_map_index].bone_chains)
+            # print(scn.my_chain_map_index)
+
             # row.prop(scn.my_bones_map[scn.my_chain_map_index].source_bone)
             # row.prop(scn.my_bones_map[scn.my_chain_map_index].name)
 
 
-classes = [ARP_UL_items,
+classes = [TestStringFunction,
+           ARP_UL_items,
            BonesMap,
            CopyRotation,
            ChainMap,
@@ -779,6 +864,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
+    bpy.types.Scene.my_test_string = bpy.props.StringProperty(update=update_string)
     bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
     bpy.types.Scene.my_sourceBoneChain = bpy.props.CollectionProperty(type=boneList)
     bpy.types.Scene.my_source_chains = bpy.props.CollectionProperty(type=BoneChains)
@@ -804,6 +890,7 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
+    del bpy.types.Scene.my_test_string
     del bpy.types.Scene.enum_Add
     del bpy.types.Scene.my_source_chains
     del bpy.types.Scene.my_target_bone_chains_list
