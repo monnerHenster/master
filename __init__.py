@@ -30,6 +30,7 @@ bl_info = {
 
 my_source_chains = []
 my_target_chains = []
+TOGGLE_UPDATE = True
 
 def set_bone_chain(self,context,BoneChains,scnBoneChains):
         scnBoneChains.clear()
@@ -179,16 +180,23 @@ def build_bones_map():
     scn.my_bones_map.clear()
     for chain_idx,chain_item in enumerate(scn.my_chain_map):
         if chain_item.name:
-            try:
-                for bone_idx,bone_item in enumerate(scn.my_target_chains[scn.my_target_chains.find(chain_item.name)].bone_chain):
-                    item = scn.my_bones_map.add()
-                    item.source_bone = scn.my_source_chains[scn.my_source_chains.find(chain_item.source_chain)].bone_chain[bone_idx].name
-                    item.name = bone_item.name
+            # try:
+            # print(chain_item.source_chain)
+            for source_bone,target_bone in zip(chain_item.source_chain.split(','),chain_item.name.split(',')):
+                item = scn.my_bones_map.add()
+                item.source_bone = source_bone
+                item.name = target_bone
 
-                    if chain_item.is_root:
-                        item.is_root = True
-            except Exception:
-                print("error bone",bone_item.name)
+
+                # for bone_idx,bone_item in enumerate(scn.my_target_chains[scn.my_target_chains.find(chain_item.name)].bone_chain):
+                #     item = scn.my_bones_map.add()
+                #     item.source_bone = scn.my_source_chains[scn.my_source_chains.find(chain_item.source_chain)].bone_chain[bone_idx].name
+                #     item.name = bone_item.name
+
+                if chain_item.is_root:
+                    item.is_root = True
+            # except Exception:
+            #     print("error bone",bone_item.name)
 
     # for item_bone in scn.my_bones_map:
 
@@ -391,7 +399,9 @@ def get_string(self):
     return self.my_test_string
 
 def update_string(self,context):
-    print('update')
+    if TOGGLE_UPDATE:
+    # bpy.ops.build_chains.go()
+        filter_name()
 
 def recoerd_old_value():
     scn = bpy.context.scene
@@ -489,6 +499,8 @@ class BonesMap(bpy.types.PropertyGroup):
     source_bone: bpy.props.StringProperty()
     is_root:bpy.props.BoolProperty()
 
+class AN_PGT_ChainBindRule(bpy.types.PropertyGroup):
+    source_name: bpy.props.StringProperty()
 
 #operator, connected the button that adds the params
 class BuildChains(bpy.types.Operator):
@@ -499,11 +511,6 @@ class BuildChains(bpy.types.Operator):
     def execute(self, context):
         scn = bpy.context.scene
         scn.my_source_chains.clear()
-
-        scn.my_source_rig = bpy.data.objects['root']
-        # source_rig = bpy.data.objects['root.001']
-        scn.my_target_rig = bpy.data.objects['Armature']
-        # target_rig = bpy.data.objects['Armature.001']
 
         # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
         boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
@@ -587,10 +594,25 @@ class sortBoneChainsOP(bpy.types.Operator):
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
+        global TOGGLE_UPDATE
+        TOGGLE_UPDATE = False
+        rule_source_name_LR = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_LR]
+        rule_source_name_body = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_body]
 
-        filter_name()
-        scn.my_test_string = '222'
-        # print(scn.my_test_string)
+        for idx,item in enumerate(scn.my_chain_map):
+            for rule_body in rule_source_name_body:
+                # print(item.source_chain.find(rule_body[0]))
+                if item.source_chain.find(rule_body[0]) >= 0 :
+                    for rule_LR in rule_source_name_LR:
+                        if item.source_chain.find(rule_LR[0]) >= 0 :
+                            for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
+                                if target_name.name.find(rule_body[1]) >=0 and target_name.name.find(rule_LR[1]) >= 0:
+                                    item.name = target_name.name
+
+        TOGGLE_UPDATE = True
+        recoerd_old_value()
+
+
         return {'FINISHED'}
     
 class autoSetChainOP(bpy.types.Operator):
@@ -636,22 +658,12 @@ class BuildList(bpy.types.Operator):
         # print(scn.my_target_chains)
         # print(scn.my_target_rig)
 
+        bpy.ops.build_chains.go()
 
         scn.my_target_bone_chains_list.clear()
         scn.my_chain_map.clear()
 
-        # for item in scn.my_target_chains:
-        #     bone_chains = scn.my_target_bone_chains_list.add()
-        #     for item in scn.my_target_chains:
-
-        #         item2 = bone_chains.bone_chains.add()
-        #         item2.name = item.name
-        
-        # for bone_chain in scn.my_source_chains:
-        #     item = scn.my_chain_map.add()
-        #     item.source_chain = bone_chain.name
-
-
+        # 从python骨骼链列表转化为blender的UI使用的列表
         for bone_chain,target_chain in zip(my_source_chains,my_target_chains):
             item = scn.my_chain_map.add()
             item.index = bone_chain['index']
@@ -667,10 +679,27 @@ class BuildList(bpy.types.Operator):
                 item_list.name = ','.join([a.name for a in chain])
             # print(scn.my_target_bone_chains_list)
 
-        for bone_chain in scn.my_chain_map:
-            item.old_name = item.name
-
+        # 记录骨骼连的变更历史方便选择后触发自动对调
         recoerd_old_value()
+
+        # 增加默认的骨骼命名匹配规则
+        scn.my_chain_bind_rule_LR.clear()
+        scn.my_chain_bind_rule_body.clear()
+
+        default_rule_source_name_LR = ['_l','_r']
+        default_rule_target_name_LR = ['Left','Right']
+        default_rule_source_name_body = ['index','middle','pinky','ring','thumb']
+        default_rule_target_name_body = ['Index','Middle','Pinky','Ring','Thumb']
+
+        for source_name , name in zip(default_rule_source_name_LR,default_rule_target_name_LR):
+            item = scn.my_chain_bind_rule_LR.add()
+            item.source_name = source_name
+            item.name = name
+
+        for source_name , name in zip(default_rule_source_name_body,default_rule_target_name_body):
+            item = scn.my_chain_bind_rule_body.add()
+            item.source_name = source_name
+            item.name = name
 
         return {'FINISHED'}
 
@@ -801,7 +830,7 @@ class OpPanel(bpy.types.Panel):
         row.operator("build_list.go")
         row.operator("copy_rotation.go")
 
-class ChainList(bpy.types.Panel):
+class ChainList_PT(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "ChainList"
     bl_category = "AniTool"
@@ -811,15 +840,40 @@ class ChainList(bpy.types.Panel):
 
     def draw(self, context: 'Context'):
         scn = bpy.context.scene
+
+        # Armature选择
+        box = self.layout.box()
+        row = box.row(align=True)
+        row.label(text='Source Armature')
+        row.prop(scn,'my_source_rig',text='')
+        row = box.row(align=True)
+        row.label(text='Target Armature')
+        row.prop(scn,'my_target_rig',text='')
+
+        # 尝试自动绑定骨骼lm
+        box = self.layout.box()
+        col = box.column()
+        col.label(text='Set Name Bind Rule')
+
+        col = box.column()
+        col.label(text='Set Left And Right Bind Rule')
+        for prop in scn.my_chain_bind_rule_LR :
+            row = box.row(align=False)
+            row.prop(prop,'source_name',text='')
+            row.prop(prop,'name',text='')
+            
+        col = box.column()
+        col.label(text='Set body Bind Rule')
+        for prop in scn.my_chain_bind_rule_body :
+            row = box.row(align=False)
+            row.prop(prop,'source_name',text='')
+            row.prop(prop,'name',text='')
+
+
+        # 骨骼链表
         self.layout.template_list("ARP_UL_items", "", scn, "my_chain_map", scn, "my_chain_map_index",rows = 11)
 
-        row = self.layout.row()
-        scn = bpy.context.scene
-        # for idx,item in enumerate(scn.my_source_chains):
-        #     row = self.layout.row()
-        #     row.label(text=scn.my_chain_map[idx].source_chain)
-        #     row.prop_search(scn.my_chain_map[idx],'name',scn.my_target_bone_chains_list[idx],'bone_chains',text='')
-
+        # 骨骼链信息配置
         if scn.my_chain_map_index >= 0 :
             box = self.layout.box()
             row = box.row(align=True)
@@ -829,19 +883,14 @@ class ChainList(bpy.types.Panel):
             row = box.row(align=True)
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
 
-            # print(scn.my_target_bone_chains_list[scn.my_chain_map_index].bone_chains)
-            # print(scn.my_chain_map_index)
 
-            # row.prop(scn.my_bones_map[scn.my_chain_map_index].source_bone)
-            # row.prop(scn.my_bones_map[scn.my_chain_map_index].name)
-
-
-classes = [TestStringFunction,
+classes = [AN_PGT_ChainBindRule,
+           TestStringFunction,
            ARP_UL_items,
            BonesMap,
            CopyRotation,
            ChainMap,
-           ChainList,
+           ChainList_PT,
            BuildList,
            autoSetChainOP,
            sortBoneChainsOP,
@@ -877,6 +926,8 @@ def register():
     bpy.types.Scene.my_chain_map = bpy.props.CollectionProperty(type=ChainMap)
     bpy.types.Scene.my_bones_map = bpy.props.CollectionProperty(type=BonesMap)
     bpy.types.Scene.my_chain_map_index = bpy.props.IntProperty()
+    bpy.types.Scene.my_chain_bind_rule_LR = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
+    bpy.types.Scene.my_chain_bind_rule_body = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_source_rig = bpy.props.PointerProperty(type=bpy.types.Object)
     bpy.types.Scene.my_target_rig = bpy.props.PointerProperty(type=bpy.types.Object)
     bpy.types.Scene.color_set_panel = bpy.props.FloatVectorProperty(name="Color Panel", subtype="COLOR_GAMMA",
@@ -905,6 +956,8 @@ def unregister():
     del bpy.types.Scene.my_chain_map
     del bpy.types.Scene.my_source_rig
     del bpy.types.Scene.my_target_rig
+    del bpy.types.Scene.my_chain_bind_rule_LR
+    del bpy.types.Scene.my_chain_bind_rule_body
     del bpy.types.Scene.my_bones_map
     del bpy.types.Scene.my_chain_map_index
 
