@@ -31,6 +31,11 @@ bl_info = {
 my_source_chains = []
 my_target_chains = []
 TOGGLE_UPDATE = True
+save_new_bind_rule = True
+save_new_ignore_name = False
+# boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+boneIgnoreName = 'thigh_twist_01_l,calf_twist_01_r,calf_twist_01_l,thigh_twist_01_r,upperarm_twist_01_l,upperarm_twist_01_r,lowerarm_twist_01_l,lowerarm_twist_01_r,ik_hand_root,ik_hand_r,ik_foot_root,ik_foot_r,ik_foot_l'
+
 
 def set_bone_chain(self,context,BoneChains,scnBoneChains):
         scnBoneChains.clear()
@@ -438,7 +443,26 @@ def filter_name():
 
 
 
-    
+def build_default_bind_rule():
+
+    scn = bpy.context.scene
+    scn.my_chain_bind_rule_LR.clear()
+    scn.my_chain_bind_rule_body.clear()
+
+    default_rule_source_name_LR = ['_l','_r']
+    default_rule_target_name_LR = ['Left','Right']
+    default_rule_source_name_body = ['index','middle','pinky','ring','thumb']
+    default_rule_target_name_body = ['Index','Middle','Pinky','Ring','Thumb']
+
+    for source_name , name in zip(default_rule_source_name_LR,default_rule_target_name_LR):
+        item = scn.my_chain_bind_rule_LR.add()
+        item.source_name = source_name
+        item.name = name
+
+    for source_name , name in zip(default_rule_source_name_body,default_rule_target_name_body):
+        item = scn.my_chain_bind_rule_body.add()
+        item.source_name = source_name
+        item.name = name
 
 
 class TestStringFunction(bpy.types.PropertyGroup):
@@ -512,16 +536,25 @@ class BuildChains(bpy.types.Operator):
         scn = bpy.context.scene
         scn.my_source_chains.clear()
 
-        boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
         # boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
         
-        for idx,bone in enumerate(scn.my_ignore_bone_name):
-            boneIgnoreName.append(str(bone.name))
+        # for idx,bone in enumerate(scn.my_ignore_bone_name):
+        #     boneIgnoreName.append(str(bone.name))
         self.sourceArmature = ArmatureBoneInfo(scn.my_source_rig)
         self.targetArmature = ArmatureBoneInfo(scn.my_target_rig)
         # a.boneIgnoreName.append('thigh_twist_01_l')
-        self.sourceArmature.boneIgnoreName += boneIgnoreName
-        self.targetArmature.boneIgnoreName += boneIgnoreName
+        global boneIgnoreName
+        if save_new_ignore_name == True:
+            boneIgnoreName_str = scn.my_ignore_bone_name
+            boneIgnoreName_list = boneIgnoreName_str.split(',')
+
+        else:
+            scn.my_ignore_bone_name = boneIgnoreName
+            boneIgnoreName_list = scn.my_ignore_bone_name.split(',')
+
+        self.sourceArmature.boneIgnoreName += boneIgnoreName_list
+        self.targetArmature.boneIgnoreName += boneIgnoreName_list
 
         global my_source_chains
         my_source_chains = self.sourceArmature.bone_chains
@@ -562,16 +595,16 @@ class SaveBoneChainsOP(bpy.types.Operator):
         #     for b in attr:
         #         print(b,getattr(item,b))
 
-        for idx,bone_chain in enumerate(scn.my_source_chains):
-            if bone_chain.isExtraBone == True:
-                for idx,bone in enumerate(bone_chain.bone_chain):
-                    item = scn.my_ignore_bone_name.add()
-                    item.name = bone.name
+        # for idx,bone_chain in enumerate(scn.my_source_chains):
+        #     if bone_chain.isExtraBone == True:
+        #         for idx,bone in enumerate(bone_chain.bone_chain):
+        #             item = scn.my_ignore_bone_name.add()
+        #             item.name = bone.name
 
-                    break
+        #             break
                 # bone_chain.remove()
-        for idx,bone in enumerate(scn.my_ignore_bone_name):
-            pass
+        # for idx,bone in enumerate(scn.my_ignore_bone_name):
+        #     pass
             # print(bone.name,idx)
         # print
       
@@ -588,9 +621,9 @@ class clearIgnoreBone(bpy.types.Operator):
         scn.my_ignore_bone_name.clear()
         return {'FINISHED'}
 
-class sortBoneChainsOP(bpy.types.Operator):
-    bl_idname = 'sort_bone_chains.go'
-    bl_label = 'sortBoneChains'
+class AutomapBoneChainsOP(bpy.types.Operator):
+    bl_idname = 'automap_bone_chains.go'
+    bl_label = 'AutomapBoneChains'
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
@@ -683,23 +716,9 @@ class BuildList(bpy.types.Operator):
         recoerd_old_value()
 
         # 增加默认的骨骼命名匹配规则
-        scn.my_chain_bind_rule_LR.clear()
-        scn.my_chain_bind_rule_body.clear()
 
-        default_rule_source_name_LR = ['_l','_r']
-        default_rule_target_name_LR = ['Left','Right']
-        default_rule_source_name_body = ['index','middle','pinky','ring','thumb']
-        default_rule_target_name_body = ['Index','Middle','Pinky','Ring','Thumb']
-
-        for source_name , name in zip(default_rule_source_name_LR,default_rule_target_name_LR):
-            item = scn.my_chain_bind_rule_LR.add()
-            item.source_name = source_name
-            item.name = name
-
-        for source_name , name in zip(default_rule_source_name_body,default_rule_target_name_body):
-            item = scn.my_chain_bind_rule_body.add()
-            item.source_name = source_name
-            item.name = name
+        if save_new_bind_rule == False:
+            build_default_bind_rule()
 
         return {'FINISHED'}
 
@@ -715,21 +734,6 @@ class CopyRotation(bpy.types.Operator):
 
         return {'FINISHED'}
     
-        for item in scn.my_chain_map:
-            source_chain = item.source_chain
-            target_chain = item.name
-
-            if target_chain :
-                for idx,item2 in enumerate(scn.my_source_chains[scn.my_source_chains.find(source_chain)].bone_chain):
-                    source_bone = item2.name
-                    target_bone = scn.my_target_chains[scn.my_target_chains.find(target_chain)].bone_chain[idx].name
-                    print(target_bone)
-                    print(scn.my_target_chains.find(target_chain))
-
-                    print(scn.my_target_rig)
-                    cst = scn.my_target_rig.pose.bones[target_bone].constraints.new("COPY_ROTATION")
-                    cst.target = scn.my_source_rig
-                    cst.subtarget = source_bone
 
     # def invoke(self, context, event):
     #     return context.window_manager.invoke_props_dialog(self, width = 350)
@@ -943,6 +947,37 @@ class AN_OT_ChangeRestPose(bpy.types.Operator):
 
         return {'FINISHED'}
     
+class AN_OT_Bind_Rule(bpy.types.Operator):
+    bl_idname = 'an.save_bind_rule'
+    bl_label = 'SaveBindRule'
+    bl_options = {'UNDO'}
+
+    def execute(self, context: 'Context'):
+        save_new_bind_rule = True
+
+        return {'FINISHED'}
+
+class AN_OT_BindRuleReset(bpy.types.Operator):
+    bl_idname = 'an.save_bind_rule_reset'
+    bl_label = 'ResetBindRule'
+    bl_options = {'UNDO'}
+
+    def execute(self, context: 'Context'):
+        build_default_bind_rule()
+
+        return {'FINISHED'}
+    
+class AN_OT_SaveIgnoreName(bpy.types.Operator):
+    bl_idname = 'an.save_ignore_name'
+    bl_label = 'Save Ignore Name'
+    bl_options = {'UNDO'}
+
+    def execute(self, context: 'Context'):
+        global save_new_ignore_name 
+        save_new_ignore_name = True
+
+        return {'FINISHED'}
+    
 # Bones collection
 class ARP_UL_items(bpy.types.UIList):
 
@@ -1024,7 +1059,7 @@ class OpPanel(bpy.types.Panel):
         row.operator("build_chains.go")
         row.operator("savebonechains.go")
         row.operator("clear_ignore_bone.go")
-        row.operator("sort_bone_chains.go")
+        row.operator("automap_bone_chains.go")
         row = self.layout.row()
         row.operator("an.changerestpose")
         row.operator("auto_set_chain.go")
@@ -1051,6 +1086,14 @@ class ChainList_PT(bpy.types.Panel):
         row.label(text='Target Armature')
         row.prop(scn,'my_target_rig',text='')
 
+        # 指定骨骼屏蔽
+        box = self.layout.box()
+        row = box.row()
+        row.label(text='Ignore Bone Name Set')
+        row.operator('an.save_ignore_name')
+        row = box.row()
+        row.prop(scn,'my_ignore_bone_name',text='')
+
         # 尝试自动绑定骨骼lm
         box = self.layout.box()
         col = box.column()
@@ -1070,6 +1113,12 @@ class ChainList_PT(bpy.types.Panel):
             row.prop(prop,'source_name',text='')
             row.prop(prop,'name',text='')
 
+        col = box.column()
+        row = box.row(align=False)
+        row.operator('an.save_bind_rule')
+        row.operator('an.save_bind_rule_reset')
+
+
 
         # 骨骼链表
         self.layout.template_list("ARP_UL_items", "", scn, "my_chain_map", scn, "my_chain_map_index",rows = 11)
@@ -1085,7 +1134,10 @@ class ChainList_PT(bpy.types.Panel):
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
 
 
-classes = [AN_OT_ChangeRestPose,
+classes = [AN_OT_SaveIgnoreName,
+           AN_OT_BindRuleReset,
+           AN_OT_Bind_Rule,
+           AN_OT_ChangeRestPose,
            AN_PGT_ChainBindRule,
            TestStringFunction,
            ARP_UL_items,
@@ -1095,7 +1147,7 @@ classes = [AN_OT_ChangeRestPose,
            ChainList_PT,
            BuildList,
            autoSetChainOP,
-           sortBoneChainsOP,
+           AutomapBoneChainsOP,
            OpPanel,
            myBone,
            boneList,
@@ -1123,7 +1175,7 @@ def register():
     bpy.types.Scene.my_targetBoneChain = bpy.props.CollectionProperty(type=boneList)
     bpy.types.Scene.my_target_chains = bpy.props.CollectionProperty(type=BoneChains)
     bpy.types.Scene.my_target_chainsRig = bpy.props.CollectionProperty(type=BoneChainsList)
-    bpy.types.Scene.my_ignore_bone_name = bpy.props.CollectionProperty(type=boneList)
+    bpy.types.Scene.my_ignore_bone_name = bpy.props.StringProperty()
     bpy.types.Scene.my_enum_bone_chain = bpy.props.CollectionProperty(type=EnumBoneCHain)
     bpy.types.Scene.my_chain_map = bpy.props.CollectionProperty(type=ChainMap)
     bpy.types.Scene.my_bones_map = bpy.props.CollectionProperty(type=BonesMap)
