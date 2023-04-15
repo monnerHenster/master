@@ -512,8 +512,8 @@ class BuildChains(bpy.types.Operator):
         scn = bpy.context.scene
         scn.my_source_chains.clear()
 
-        # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
-        boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
+        # boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
         
         for idx,bone in enumerate(scn.my_ignore_bone_name):
             boneIgnoreName.append(str(bone.name))
@@ -742,7 +742,207 @@ class CopyRotation(bpy.types.Operator):
             # print(source_chain)
                     # bpy.data.objects['root.001']
 
+class AN_OT_ChangeRestPose(bpy.types.Operator):
+    bl_idname = 'an.changerestpose'
+    bl_label = 'ChangeRestPose'
+    bl_options = {'UNDO'}
 
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+
+        _spine = ['pelvis', 'spine', 'neck', 'head']
+        _arms = ['clavicle', 'upperarm', 'lowerarm']
+        _hand = ['hand']
+        _fingers = ['thumb', 'index', 'middle', 'ring', 'pinky']
+        _legs = ['thigh', 'calf']
+        _foot = ['foot']
+        _toes = ['ball']
+
+        # _spine = ['pelvis']
+        # _arms = []
+        # _hand = []
+        # _fingers = []
+        # _legs = []
+        # _foot = []
+        # _toes = []
+
+
+        bones_transforms_dict = {}
+
+        print("\nSet Mannequin Axes bones...")
+
+        #display layers
+
+
+        print("  Build transform dict...")
+
+        #build a dict of bones transforms, excluding custom bones, bend bones, helper bones
+
+
+        rotate_value = 0.0
+        rotate_axis = 'X'
+        roll_value = 0.0
+
+
+        created_bones_dict = {}
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        scn.my_source_rig.select_set(state=True)
+        bpy.ops.object.mode_set(mode='EDIT')
+        for chain in my_source_chains:
+            for pb in chain['chain']:
+                bone_name = pb.name
+                bone_to_create_name = ""
+                rotate_value = 0.0
+                roll_value = 0.0
+                rotate_axis = Vector((1,0,0))
+
+                if pb.name == 'thigh_twist_01_l':
+                    a = 1
+                    pass
+
+                #spine
+                for b in _spine:
+                    if b in bone_name:
+                        rotate_value = -math.pi/2
+                        roll_value = math.radians(-90)
+                        bone_to_create_name = bone_name
+                        rotate_axis = 'Z'
+                        break
+
+                #arms
+                if bone_to_create_name == "":
+                    for b in _arms:
+                        if b in bone_name:
+                            if bone_name.endswith(".l") or bone_name.endswith("_l"):
+
+                                rotate_value = -math.pi/2
+                                roll_value = 0.0
+                                if scn.arp_retro_axes:
+                                    rotate_value = -math.pi/2
+                                    roll_value = math.radians(180)
+
+                            if bone_name.endswith(".r") or bone_name.endswith("_r"):
+
+                                rotate_value = math.pi/2
+                                roll_value = math.radians(180)
+                                if scn.arp_retro_axes:
+                                    rotate_value = -math.pi/2
+                                    roll_value = math.radians(0)
+
+                            bone_to_create_name = bone_name
+                            rotate_axis = 'Z'
+                            break
+
+                #hand
+                if bone_to_create_name == "":
+                    for b in _hand:
+                        if b in bone_name:
+                            if bone_name.endswith(".l") or bone_name.endswith("_l"):
+                                rotate_value = -math.pi/2
+                                roll_value = math.radians(-90)
+
+                            if bone_name.endswith(".r") or bone_name.endswith("_r"):
+                                rotate_value = math.pi/2
+                                roll_value = math.radians(-90)
+
+                            bone_to_create_name = bone_name
+                            rotate_axis = 'Z'
+                            break
+
+                #fingers
+                if bone_to_create_name == "":
+                    for b in _fingers:
+                        if b in bone_name:
+                            if bone_name.endswith(".l") or bone_name.endswith("_l"):
+                                rotate_value = -math.pi/2
+                                roll_value = math.radians(-90)
+
+                            if bone_name.endswith(".r") or bone_name.endswith("_r"):
+                                rotate_value = math.pi/2
+                                roll_value = math.radians(-90)
+
+                            bone_to_create_name = bone_name
+                            rotate_axis = 'Z'
+                            break
+
+                #legs
+                if bone_to_create_name == "":
+                    for b in _legs:
+                        if b in bone_name:
+                            if bone_name.endswith(".l") or bone_name.endswith("_l"):
+                                rotate_value = math.pi/2
+                                roll_value = math.radians(180)
+
+                            if bone_name.endswith(".r") or bone_name.endswith("_r"):
+                                rotate_value = -math.pi/2
+                                roll_value = math.radians(0)
+
+                            bone_to_create_name = bone_name
+                            rotate_axis = 'Z'
+                            break
+
+                #foot
+                if bone_to_create_name == "":
+                    for b in _foot:
+                        if b in bone_name:
+                            if bone_name.endswith(".l") or bone_name.endswith("_l"):
+                                rotate_value = math.pi
+                                roll_value = math.radians(90)
+
+                            if bone_name.endswith(".r") or bone_name.endswith("_r"):
+                                rotate_value = 0.0
+                                roll_value = math.radians(-90)
+
+                            bone_to_create_name = bone_name
+                            rotate_axis = 'Z'
+                            break
+
+                #toes
+                if bone_to_create_name == "":
+                    for b in _toes:
+                        if b in bone_name:
+                            if bone_name.endswith(".l") or bone_name.endswith("_l"):
+                                rotate_value = -math.pi/2
+                                roll_value = math.radians(-90)
+
+                            if bone_name.endswith(".r") or bone_name.endswith("_r"):
+                                rotate_value = math.pi/2
+                                roll_value = math.radians(-90)
+
+                            bone_to_create_name = bone_name
+                            rotate_axis = 'Z'
+                            break
+
+
+                if bone_to_create_name != "" :
+                    #create _childof bones
+                    # new_bone = create_edit_bone(bone_to_create_name + "_childof", deform=False)
+                    # new_bone.head = bones_transforms_dict[bone_to_create_name][0]
+                    # new_bone.tail = bones_transforms_dict[bone_to_create_name][1]
+                    # new_bone.roll = bones_transforms_dict[bone_to_create_name][2]
+
+                    # R = Matrix.Rotation(math.radians(-90.0),4,eb.z_axis.normalized())
+                    eb = bpy.context.object.data.edit_bones.get(bone_name)
+                    R = Matrix.Rotation(rotate_value,4,eb.z_axis.normalized() if rotate_axis == 'Z' else eb.x_axis.normalized())
+                    # print(R)
+                    old_head = eb.head.copy()
+                    eb.transform(R,roll=True)
+                    # eb.tail.rotate(R)
+                    offset = -(eb.head - old_head)
+                    eb.head += offset
+                    eb.tail += offset
+                    set_bone_layer(eb, 16)
+                    # get_edit_bone(bone_to_create_name).use_deform = False
+                    # store the new bones in a dict
+                    # created_bones_dict[bone_to_create_name] = rotate_value, roll_value, rotate_axis
+
+                    # print(math.pi)
+                    # print(math.radians(90))
+
+        return {'FINISHED'}
+    
 # Bones collection
 class ARP_UL_items(bpy.types.UIList):
 
@@ -826,6 +1026,7 @@ class OpPanel(bpy.types.Panel):
         row.operator("clear_ignore_bone.go")
         row.operator("sort_bone_chains.go")
         row = self.layout.row()
+        row.operator("an.changerestpose")
         row.operator("auto_set_chain.go")
         row.operator("build_list.go")
         row.operator("copy_rotation.go")
@@ -863,7 +1064,7 @@ class ChainList_PT(bpy.types.Panel):
             row.prop(prop,'name',text='')
             
         col = box.column()
-        col.label(text='Set body Bind Rule')
+        col.label(text='Set Body Bind Rule')
         for prop in scn.my_chain_bind_rule_body :
             row = box.row(align=False)
             row.prop(prop,'source_name',text='')
@@ -884,7 +1085,8 @@ class ChainList_PT(bpy.types.Panel):
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
 
 
-classes = [AN_PGT_ChainBindRule,
+classes = [AN_OT_ChangeRestPose,
+           AN_PGT_ChainBindRule,
            TestStringFunction,
            ARP_UL_items,
            BonesMap,
