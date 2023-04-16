@@ -173,6 +173,7 @@ def copy_bone_transforms(bone1, bone2):
 
 def set_active_object(object_name):
      bpy.context.view_layer.objects.active = object_name
+     object_name.hide_set(False)
      object_name.select_set(state=True)
 
 def set_bone_layer(editbone, layer_idx, multi=False):
@@ -214,6 +215,7 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
     scn = bpy.context.scene
 
     scn_target_rig = scn.my_target_rig
+    set_active_object(scn_target_rig)
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
     scn_source_rig.select_set(state=True)
@@ -254,9 +256,11 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
     set_active_object(scn_source_rig)
-    # scn_source_rig.select_set(state=True)
+    bpy.context.view_layer.objects.active = scn_source_rig
+    scn_source_rig.select_set(state=True)
     bpy.ops.object.mode_set(mode='EDIT')
     # bpy.ops.object.select_all(action='DESELECT')
+
 
     # scn_source_rig.select_set(state=True)
 
@@ -480,6 +484,13 @@ def build_default_bind_rule():
         item.source_name = source_name
         item.name = name
 
+def select_mode(obj,mode):
+        scn = bpy.context.scene
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(state=True)
+        bpy.ops.object.mode_set(mode=mode)
 
 class TestStringFunction(bpy.types.PropertyGroup):
     test_string:bpy.props.StringProperty(set=None)
@@ -703,9 +714,11 @@ class autoSetChainOP(bpy.types.Operator):
             print(a )
         return {'FINISHED'}
 
+
 class BuildList(bpy.types.Operator):
     bl_idname = 'build_list.go'
     bl_label = 'BuildList'
+    bl_options = {'UNDO'}
 
     def execute(self, context: 'Context'):
 
@@ -722,6 +735,8 @@ class BuildList(bpy.types.Operator):
         for bone_chain,target_chain in zip(my_source_chains,my_target_chains):
             item = scn.my_chain_map.add()
             item.index = bone_chain['index']
+            if item.index == 0 :
+                item.is_root = True
             source_chain = ','.join([a.name for a in bone_chain['chain']])
             item.source_chain = source_chain
             target_chain = ','.join([a.name for a in target_chain['chain']])
@@ -742,6 +757,10 @@ class BuildList(bpy.types.Operator):
         if save_new_bind_rule == False:
             build_default_bind_rule()
 
+
+        bpy.ops.automap_bone_chains.go()
+
+        select_mode(scn.my_source_rig,'OBJECT')
         return {'FINISHED'}
 
 class CopyRotation(bpy.types.Operator):
@@ -753,7 +772,7 @@ class CopyRotation(bpy.types.Operator):
         scn = bpy.context.scene
         build_bones_map()
         build_bone_tweak(self,context,scn.my_source_chains,scn.my_source_rig)
-
+        select_mode(scn.my_source_rig,'OBJECT')
         return {'FINISHED'}
     
 
@@ -1000,6 +1019,23 @@ class AN_OT_SaveIgnoreName(bpy.types.Operator):
 
         return {'FINISHED'}
     
+class AN_OT_ClearConstraints(bpy.types.Operator):
+    bl_idname = 'an.clear_constraints'
+    bl_label = 'Clear Constraints'
+    bl_options = {'UNDO'}
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        select_mode(scn.my_target_rig,'POSE')
+        for bone in scn.my_target_rig.pose.bones:
+            for csts in bone.constraints:
+                bone.constraints.remove(csts)
+            # print(dir(bone.constraints))
+            # break
+
+        return {'FINISHED'}
+    
+
 # Bones collection
 class ARP_UL_items(bpy.types.UIList):
 
@@ -1087,6 +1123,8 @@ class OpPanel(bpy.types.Panel):
         row.operator("auto_set_chain.go")
         row.operator("build_list.go")
         row.operator("copy_rotation.go")
+        row = self.layout.row()
+        row.operator("an.clear_constraints")
 
 class ChainList_PT(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -1156,7 +1194,8 @@ class ChainList_PT(bpy.types.Panel):
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
 
 
-classes = [AN_OT_SaveIgnoreName,
+classes = [AN_OT_ClearConstraints,
+           AN_OT_SaveIgnoreName,
            AN_OT_BindRuleReset,
            AN_OT_Bind_Rule,
            AN_OT_ChangeRestPose,
