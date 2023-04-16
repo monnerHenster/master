@@ -52,6 +52,18 @@ class ArmatureBoneInfo():
                 newBone.bone = orginBone
         boneList = []
         return boneList
+    
+    @staticmethod
+    def check_helper_bones(bone):
+        helper_bones_name = ['_REMAPTWEAK','_ROOT_OFFSET','_ROOT','_REMAP']
+        for helper_bone in helper_bones_name:
+            if hasattr(bone,'name'):
+                if bone.name.endswith(helper_bone):
+                    return True
+            else:
+                if bone.endswith(helper_bone):
+                    return True
+        return False
 
     def findRootBones(self):
         # self.rootBones = [boneIndex]
@@ -61,7 +73,10 @@ class ArmatureBoneInfo():
                 # newBone = boneIndex()
                 # newBone.bone = orginBone
                 # newBone.index = 0
-                self.rootBones.append(orginBone)
+                if self.check_helper_bones(orginBone):
+                    continue
+                else:
+                    self.rootBones.append(orginBone)
 
     bone_chain = [boneIndex] 
     bone_chains = []

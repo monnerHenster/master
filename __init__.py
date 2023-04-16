@@ -154,7 +154,10 @@ def mat3_to_vec_roll(mat, ret_vec=False):
 def create_edit_bone(bone_name):
     # b = get_edit_bone(bone_name)
     # if b == None:
-    b = bpy.context.active_object.data.edit_bones.new(bone_name)
+    if bpy.context.active_object.data.edit_bones.get(bone_name):
+        b = bpy.context.active_object.data.edit_bones.get(bone_name)
+    else:
+        b = bpy.context.active_object.data.edit_bones.new(bone_name)
         # b.use_deform = deform
     return b
     bpy.context.active_object.data.edit_bones.new(bone_name)
@@ -260,6 +263,10 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
     # return
 
     bone_names = [b.name for b in scn_source_rig.data.edit_bones]
+    temp_bone_names = bone_names[:]
+    for bone in temp_bone_names:
+        if ArmatureBoneInfo.check_helper_bones(bone=bone):
+            bone_names.remove(bone)
     for bname in bone_names:
         if not bname.endswith(tweak_suffix):
             eb = bpy.context.object.data.edit_bones.get(bname)  
@@ -315,7 +322,10 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
         if bone_item.name != "" and bone_item.name != "None" and eb_source_bone and bone_item.name in tar_bones_dict:            
         # if bone_item.name != "" and bone_item.name != "None" and eb_source_bone and bone_item.name in tar_bones_dict:            
             # main
-            bone_remap = bpy.context.active_object.data.edit_bones.new(bone_item.name+"_REMAP")                
+            if bpy.context.active_object.data.edit_bones.get(bone_item.name+"_REMAP"):
+                bone_remap = bpy.context.active_object.data.edit_bones.get(bone_item.name+"_REMAP")                
+            else:
+                bone_remap = bpy.context.active_object.data.edit_bones.new(bone_item.name+"_REMAP")       
             # bone_remap['arp_remap_temp_bone'] = 1# tag it for deletion
             
             # copy target bones transforms
@@ -355,7 +365,7 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
                 cns = bone_root_offset_pb.constraints.new('COPY_LOCATION')
                 cns.target = scn_source_rig
                 cns.subtarget = source_bone_name
-                cns.name += 'REMAP'
+                cns.name += '_REMAP'
                 
                 bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -376,16 +386,22 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
             
             # Add constraints
             # main rotation
-            cns = pose_bone.constraints.new('COPY_ROTATION')
+            if 'Copy Rotation_REMAP' in pose_bone.constraints:
+                cns = pose_bone.constraints['Copy Rotation_REMAP']
+            else:
+                cns = pose_bone.constraints.new('COPY_ROTATION')
+                cns.name += '_REMAP'
             cns.target = scn_source_rig
             cns.subtarget = bone_item.name + "_REMAP"
-            cns.name += 'REMAP'
 
             if bone_item.is_root:
-                cns_root = pose_bone.constraints.new('COPY_LOCATION')
+                if 'Copy Location_loc_REMAP' in pose_bone.constraints:
+                    cns_root = pose_bone.constraints['Copy Location_loc_REMAP']
+                else:
+                    cns_root = pose_bone.constraints.new('COPY_LOCATION')
+                    cns_root.name += '_loc_REMAP'                   
                 cns_root.target = scn_source_rig
                 cns_root.subtarget = bone_item.name + "_ROOT"
-                cns_root.name += '_loc_REMAP'                 
                 cns_root.owner_space = cns_root.target_space = 'WORLD'
 
 def set_string(self,value):
@@ -632,15 +648,21 @@ class AutomapBoneChainsOP(bpy.types.Operator):
         rule_source_name_LR = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_LR]
         rule_source_name_body = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_body]
 
+        temp_my_chain_map = [a.name for a in scn.my_chain_map]
         for idx,item in enumerate(scn.my_chain_map):
-            for rule_body in rule_source_name_body:
-                # print(item.source_chain.find(rule_body[0]))
-                if item.source_chain.find(rule_body[0]) >= 0 :
-                    for rule_LR in rule_source_name_LR:
-                        if item.source_chain.find(rule_LR[0]) >= 0 :
-                            for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
-                                if target_name.name.find(rule_body[1]) >=0 and target_name.name.find(rule_LR[1]) >= 0:
-                                    item.name = target_name.name
+            for item_target in (temp_my_chain_map):
+                if item.source_chain == item_target:
+                    item.name = item_target
+                    break
+                else:
+                    for rule_body in rule_source_name_body:
+                        # print(item.source_chain.find(rule_body[0]))
+                        if item.source_chain.find(rule_body[0]) >= 0 :
+                            for rule_LR in rule_source_name_LR:
+                                if item.source_chain.find(rule_LR[0]) >= 0 :
+                                    for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
+                                        if target_name.name.find(rule_body[1]) >=0 and target_name.name.find(rule_LR[1]) >= 0:
+                                            item.name = target_name.name
 
         TOGGLE_UPDATE = True
         recoerd_old_value()
