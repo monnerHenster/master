@@ -35,7 +35,7 @@ save_new_bind_rule = True
 save_new_ignore_name = False
 # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
 boneIgnoreName = 'thigh_twist_01_l,calf_twist_01_r,calf_twist_01_l,thigh_twist_01_r,upperarm_twist_01_l,upperarm_twist_01_r,lowerarm_twist_01_l,lowerarm_twist_01_r,ik_hand_root,ik_hand_r,ik_foot_root,ik_foot_r,ik_foot_l'
-
+ik_bone = 'lowerarm_r,calf_r,lowerarm_l,calf_l'
 
 def set_bone_chain(self,context,BoneChains,scnBoneChains):
         scnBoneChains.clear()
@@ -160,7 +160,14 @@ def create_edit_bone(bone_name):
         b = bpy.context.active_object.data.edit_bones.new(bone_name)
         # b.use_deform = deform
     return b
-    bpy.context.active_object.data.edit_bones.new(bone_name)
+
+def create_constraint(rig,bone_name,cst_name,type):
+    for cnsts in rig.pose.bones[bone_name].constraints:
+        if cnsts.name == cst_name:
+            return cnsts
+    cst = rig.pose.bones[bone_name].constraints.new(type)
+    cst.name = cst_name
+    return cst
 
 def copy_bone_transforms(bone1, bone2):
     # copy editbone bone1 transforms to bone 2
@@ -377,7 +384,7 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
     bpy.ops.object.select_all(action='DESELECT')
     bpy.context.view_layer.objects.active = scn_target_rig
     scn_target_rig.select_set(state=True)
-    bpy.data.objects['Armature'].select_set(state=True)
+    # bpy.data.objects['Armature'].select_set(state=True)
     bpy.ops.object.mode_set(mode='POSE')
 
     scn_target_rig.animation_data.action = None
@@ -488,6 +495,8 @@ def select_mode(obj,mode):
         scn = bpy.context.scene
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
+
+        obj.hide_set(False)
         bpy.context.view_layer.objects.active = obj
         obj.select_set(state=True)
         bpy.ops.object.mode_set(mode=mode)
@@ -642,11 +651,41 @@ class SaveBoneChainsOP(bpy.types.Operator):
 class clearIgnoreBone(bpy.types.Operator):
     bl_idname = 'clear_ignore_bone.go'
     bl_label = 'clearIgnoreBone'
+    bl_options = {'UNDO'}
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
         scn.my_ignore_bone_name.clear()
         return {'FINISHED'}
+
+class AN_OP_AddIKBone(bpy.types.Operator):
+    bl_idname = 'an.add_ikbone'
+    bl_label = 'Add IKBone'
+    bl_options = {'UNDO'}
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        global ik_bone
+        ik_bone_list = ik_bone.split(',')
+        select_mode(scn.my_source_rig,'EDIT')
+        for bone in ik_bone_list:
+            bone_IK = create_edit_bone(bone+'_IK')
+            bone_foot = bpy.context.object.data.edit_bones.get(bone)
+            bone_IK.head = bone_foot.tail
+            bone_IK.tail = bone_IK.head[:]
+            bone_IK.tail[1] += 20
+
+        select_mode(scn.my_source_rig,'POSE')
+        for bone in ik_bone_list:
+            cst = create_constraint(scn.my_source_rig,bone,'IK_Anitool','IK')
+            cst.target = scn.my_source_rig
+            cst.subtarget = bone+'_IK'
+            cst.chain_count = 2
+
+        select_mode(scn.my_source_rig,'OBJECT')
+
+        return {'FINISHED'}
+    
 
 class AutomapBoneChainsOP(bpy.types.Operator):
     bl_idname = 'automap_bone_chains.go'
@@ -684,6 +723,7 @@ class AutomapBoneChainsOP(bpy.types.Operator):
 class autoSetChainOP(bpy.types.Operator):
     bl_idname = 'auto_set_chain.go'
     bl_label = 'autoSetChainOP'
+    bl_options = {'UNDO'}
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
@@ -1125,6 +1165,7 @@ class OpPanel(bpy.types.Panel):
         row.operator("copy_rotation.go")
         row = self.layout.row()
         row.operator("an.clear_constraints")
+        row.operator("an.add_ikbone")
 
 class ChainList_PT(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -1194,7 +1235,8 @@ class ChainList_PT(bpy.types.Panel):
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
 
 
-classes = [AN_OT_ClearConstraints,
+classes = [AN_OP_AddIKBone,
+           AN_OT_ClearConstraints,
            AN_OT_SaveIgnoreName,
            AN_OT_BindRuleReset,
            AN_OT_Bind_Rule,
@@ -1209,7 +1251,6 @@ classes = [AN_OT_ClearConstraints,
            BuildList,
            autoSetChainOP,
            AutomapBoneChainsOP,
-           OpPanel,
            myBone,
            boneList,
            BoneChains,
@@ -1219,6 +1260,7 @@ classes = [AN_OT_ClearConstraints,
            RemapPanel,
            BoneChainsPanel,
            SaveBoneChainsOP,
+           OpPanel,
            BuildChains,
            enumAdd,
            EnumBoneCHain]
