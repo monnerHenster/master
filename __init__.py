@@ -31,7 +31,7 @@ bl_info = {
 my_source_chains = []
 my_target_chains = []
 TOGGLE_UPDATE = True
-save_new_bind_rule = True
+save_new_bind_rule = False
 save_new_ignore_name = False
 # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
 boneIgnoreName = 'thigh_twist_01_l,calf_twist_01_r,calf_twist_01_l,thigh_twist_01_r,upperarm_twist_01_l,upperarm_twist_01_r,lowerarm_twist_01_l,lowerarm_twist_01_r,ik_hand_root,ik_hand_r,ik_foot_root,ik_foot_r,ik_foot_l'
@@ -675,6 +675,31 @@ class AN_OP_AddIKBone(bpy.types.Operator):
             bone_IK.tail = bone_IK.head[:]
             bone_IK.tail[1] += 20
 
+        
+
+        for bone in ik_bone_list:
+            bone_IK = create_edit_bone(bone+'_IK')
+            cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
+            cst.target = scn.my_source_rig
+            cst.head_tail = 1
+            cst.subtarget = bone
+
+        select_mode(scn.my_source_rig,'POSE')
+
+        bpy.ops.pose.select_all(action='SELECT')
+
+        bpy.ops.nla.bake(
+		frame_start=int(scn.my_target_rig.animation_data.action.frame_range[0]),
+		frame_end=int(scn.my_target_rig.animation_data.action.frame_range[1]),
+		step=1,
+		only_selected=True,
+		visual_keying=True,
+        clear_constraints = True,
+		# use_current_action=True,
+		bake_types={'POSE'}
+        )
+        # return {'FINISHED'}
+
         select_mode(scn.my_source_rig,'POSE')
         for bone in ik_bone_list:
             cst = create_constraint(scn.my_source_rig,bone,'IK_Anitool','IK')
@@ -683,7 +708,6 @@ class AN_OP_AddIKBone(bpy.types.Operator):
             cst.chain_count = 2
 
         select_mode(scn.my_source_rig,'OBJECT')
-
         return {'FINISHED'}
     
 
@@ -699,10 +723,11 @@ class AutomapBoneChainsOP(bpy.types.Operator):
         rule_source_name_body = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_body]
 
         temp_my_chain_map = [a.name for a in scn.my_chain_map]
+        # temp_my_chain_map = [a.name for a in my_target_chains]
         for idx,item in enumerate(scn.my_chain_map):
-            for item_target in (temp_my_chain_map):
-                if item.source_chain == item_target:
-                    item.name = item_target
+            for item_target in (my_target_chains):
+                if item.source_chain == ','.join(a.name for a in  item_target['chain']):
+                    item.name = ','.join(a.name for a in  item_target['chain'])
                     break
                 else:
                     for rule_body in rule_source_name_body:
@@ -1066,12 +1091,14 @@ class AN_OT_ClearConstraints(bpy.types.Operator):
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
-        select_mode(scn.my_target_rig,'POSE')
-        for bone in scn.my_target_rig.pose.bones:
+        select_mode(bpy.context.active_object,'POSE')
+        for bone in bpy.context.active_object.pose.bones:
             for csts in bone.constraints:
                 bone.constraints.remove(csts)
             # print(dir(bone.constraints))
             # break
+        select_mode(bpy.context.active_object,'OBJECT')
+
 
         return {'FINISHED'}
     
@@ -1196,28 +1223,32 @@ class ChainList_PT(bpy.types.Panel):
         row.prop(scn,'my_ignore_bone_name',text='')
 
         # 尝试自动绑定骨骼lm
+
         box = self.layout.box()
         col = box.column()
-        col.label(text='Set Name Bind Rule')
+        row = box.row()
+        row.prop(scn, "an_bind_rule_expand_ui", icon="TRIA_DOWN" if scn.an_bind_rule_expand_ui else "TRIA_RIGHT", icon_only=True, emboss=False)
+        row.label(text='Set Name Bind Rule')
 
-        col = box.column()
-        col.label(text='Set Left And Right Bind Rule')
-        for prop in scn.my_chain_bind_rule_LR :
-            row = box.row(align=False)
-            row.prop(prop,'source_name',text='')
-            row.prop(prop,'name',text='')
-            
-        col = box.column()
-        col.label(text='Set Body Bind Rule')
-        for prop in scn.my_chain_bind_rule_body :
-            row = box.row(align=False)
-            row.prop(prop,'source_name',text='')
-            row.prop(prop,'name',text='')
+        if scn.an_bind_rule_expand_ui:
+            col = box.column()
+            col.label(text='Set Left And Right Bind Rule')
+            for prop in scn.my_chain_bind_rule_LR :
+                row = box.row(align=False)
+                row.prop(prop,'source_name',text='')
+                row.prop(prop,'name',text='')
+                
+            col = box.column()
+            col.label(text='Set Body Bind Rule')
+            for prop in scn.my_chain_bind_rule_body :
+                row = box.row(align=False)
+                row.prop(prop,'source_name',text='')
+                row.prop(prop,'name',text='')
 
-        col = box.column()
-        row = box.row(align=False)
-        row.operator('an.save_bind_rule')
-        row.operator('an.save_bind_rule_reset')
+            col = box.column()
+            row = box.row(align=False)
+            row.operator('an.save_bind_rule')
+            row.operator('an.save_bind_rule_reset')
 
 
 
@@ -1283,6 +1314,7 @@ def register():
     bpy.types.Scene.my_chain_map = bpy.props.CollectionProperty(type=ChainMap)
     bpy.types.Scene.my_bones_map = bpy.props.CollectionProperty(type=BonesMap)
     bpy.types.Scene.my_chain_map_index = bpy.props.IntProperty()
+    bpy.types.Scene.an_bind_rule_expand_ui = bpy.props.BoolProperty()
     bpy.types.Scene.my_chain_bind_rule_LR = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_chain_bind_rule_body = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_source_rig = bpy.props.PointerProperty(type=bpy.types.Object)
@@ -1317,6 +1349,7 @@ def unregister():
     del bpy.types.Scene.my_chain_bind_rule_body
     del bpy.types.Scene.my_bones_map
     del bpy.types.Scene.my_chain_map_index
+    del bpy.types.Scene.an_bind_rule_expand_ui
 
 if __name__ == "__main__":
     register()
