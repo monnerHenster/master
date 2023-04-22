@@ -39,8 +39,8 @@ ik_bone = 'lowerarm_r,calf_r,lowerarm_l,calf_l'
 
 default_rule_source_name_LR = ['_l','_r']
 default_rule_target_name_LR = ['Left','Right']
-default_rule_source_name_body = ['index','middle','pinky','ring','thumb']
-default_rule_target_name_body = ['Index','Middle','Pinky','Ring','Thumb']
+default_rule_source_name_body = ['index','middle','pinky','ring','thumb','thigh','clavicle','neck']
+default_rule_target_name_body = ['Index','Middle','Pinky','Ring','Thumb','UpLeg','Shoulder','Neck']
 
 
 def set_bone_chain(self,context,BoneChains,scnBoneChains):
@@ -497,15 +497,26 @@ def build_default_bind_rule():
         item.source_name = source_name
         item.name = name
 
-def select_mode(obj,mode):
-        scn = bpy.context.scene
-        bpy.ops.object.mode_set(mode='OBJECT')
-        bpy.ops.object.select_all(action='DESELECT')
+def selects_mode(objs,mode):
+    scn = bpy.context.scene
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
 
+    for obj in objs:
         obj.hide_set(False)
         bpy.context.view_layer.objects.active = obj
         obj.select_set(state=True)
-        bpy.ops.object.mode_set(mode=mode)
+    bpy.ops.object.mode_set(mode=mode)
+
+def select_mode(obj,mode):
+    scn = bpy.context.scene
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+
+    obj.hide_set(False)
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(state=True)
+    bpy.ops.object.mode_set(mode=mode)
 
 def copy_transforms(bone_map):
     scn = bpy.context.scene
@@ -515,6 +526,14 @@ def copy_transforms(bone_map):
         pb2 = scn.my_target_rig.pose.bones[item.name]
         cnst = pb2.constraints.new('COPY_TRANSFORMS')
         cnst.target = scn.my_source_rig
+        cnst.subtarget = pb1.name
+
+def copy_transforms_all(source,target):
+    select_mode(target,"POSE")
+    for pb1 in source.pose.bones:
+        pb2 = target.pose.bones[pb1.name]
+        cnst = pb2.constraints.new('COPY_TRANSFORMS')
+        cnst.target = source
         cnst.subtarget = pb1.name
 
 def connect_bones():
@@ -733,6 +752,9 @@ def duplicate(obj, data=True, actions=True, collection=None):
 
 def copy_rest_pose(bone_map):
     scn = bpy.context.scene
+    selects_mode([scn.my_source_rig,scn.my_target_rig],"POSE")
+    for pb in scn.my_source_rig.pose.bones:
+        pb.matrix_basis = Matrix() 
     for item in bone_map:
         bpy.context.view_layer.update()
         pb1 = scn.my_source_rig.pose.bones[item.source_bone]
@@ -753,9 +775,6 @@ def copy_rest_pose(bone_map):
         temp_head = pb1.head.copy()
         # pb1.matrix = pb1.matrix @ rot.to_matrix().to_4x4() 
         pb1.matrix = m @ pb1.matrix
-
-
-    
 
 class TestStringFunction(bpy.types.PropertyGroup):
     test_string:bpy.props.StringProperty(set=None)
@@ -914,6 +933,66 @@ class clearIgnoreBone(bpy.types.Operator):
         scn.my_ignore_bone_name.clear()
         return {'FINISHED'}
 
+class AN_OT_CopyRestPose(bpy.types.Operator):
+    bl_idname = 'an.copy_rest_pose'
+    bl_label = 'Copy Rest Pose'
+    bl_options = {'UNDO'}
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        build_bones_map()
+        copy_rest_pose(scn.my_bones_map)
+
+        return {'FINISHED'}
+
+class AN_OT_ApplyRestPose(bpy.types.Operator):
+    bl_idname = 'an.apply_rest_pose'
+    bl_label = 'Apply Rest Pose'
+    bl_options = {'UNDO'}
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        temp_source_rig = duplicate(scn.my_source_rig)
+        select_mode(scn.my_source_rig,'OBJECT')
+        bpy.ops.object.select_grouped(extend=False, type='CHILDREN_RECURSIVE')
+        mesh = bpy.context.selected_objects[0]
+        select_mode(mesh,'OBJECT')
+
+        mod = mesh.modifiers.new(name=mesh.modifiers[0].name+'_rest', type=mesh.modifiers[0].type)
+        mod.object = scn.my_source_rig
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+
+        select_mode(scn.my_source_rig,'POSE')
+        bpy.ops.pose.armature_apply(selected=False)
+        # return {'FINISHED'}
+        bpy.context.view_layer.update()
+
+        copy_transforms_all(temp_source_rig,scn.my_source_rig)
+        bpy.context.view_layer.update()
+
+        select_mode(scn.my_source_rig,'POSE')
+        bpy.ops.pose.select_all(action='SELECT')
+        # return {'FINISHED'}
+
+        bpy.ops.nla.bake(
+		frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
+		frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
+		step=1,
+		only_selected=True,
+		visual_keying=True,
+        clear_constraints = True,
+		# use_current_action=True,
+		bake_types={'POSE'}
+        )
+        # return {'FINISHED'}
+
+        select_mode(temp_source_rig,'OBJECT')
+        bpy.ops.object.select_grouped(extend=True, type='CHILDREN_RECURSIVE')
+        bpy.ops.object.delete()
+
+        return {'FINISHED'}
+
+
 class AN_OT_AddIKBone(bpy.types.Operator):
     bl_idname = 'an.add_ikbone'
     bl_label = 'Add IKBone'
@@ -987,19 +1066,28 @@ class AutomapBoneChainsOP(bpy.types.Operator):
         temp_my_chain_map = [a.name for a in scn.my_chain_map]
         # temp_my_chain_map = [a.name for a in my_target_chains]
         for idx,item in enumerate(scn.my_chain_map):
+            find_state = False
             for item_target in (my_target_chains):
                 if item.source_chain == ','.join(a.name for a in  item_target['chain']):
                     item.name = ','.join(a.name for a in  item_target['chain'])
+                    find_state = True
                     break
-                else:
-                    for rule_body in rule_source_name_body:
-                        # print(item.source_chain.find(rule_body[0]))
-                        if item.source_chain.find(rule_body[0]) >= 0 :
-                            for rule_LR in rule_source_name_LR:
-                                if item.source_chain.find(rule_LR[0]) >= 0 :
-                                    for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
-                                        if target_name.name.find(rule_body[1]) >=0 and target_name.name.find(rule_LR[1]) >= 0:
-                                            item.name = target_name.name
+            
+            if find_state == False:
+                for rule_body in rule_source_name_body:
+                    if item.source_chain.find(rule_body[0]) >= 0 :
+                        for rule_LR in rule_source_name_LR:
+                            if item.source_chain.find(rule_LR[0]) >= 0 :
+                                for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
+                                    if target_name.name.find(rule_body[1]) >=0 and target_name.name.find(rule_LR[1]) >= 0:
+                                        item.name = target_name.name
+                                        break
+                                break
+                            for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
+                                    if target_name.name.find(rule_body[1]) >=0 :
+                                        item.name = target_name.name
+                                        break
+                        break
 
         TOGGLE_UPDATE = True
         recoerd_old_value()
@@ -1345,6 +1433,8 @@ class OpPanel(bpy.types.Panel):
         row = self.layout.row()
         row.operator("an.clear_constraints")
         row.operator("an.add_ikbone")
+        row.operator("an.copy_rest_pose")
+        row.operator("an.apply_rest_pose")
 
 class ChainList_PT(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -1419,7 +1509,9 @@ class ChainList_PT(bpy.types.Panel):
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
 
 
-classes = [AN_OT_SwitchBindRule,
+classes = [AN_OT_ApplyRestPose,
+           AN_OT_CopyRestPose,
+           AN_OT_SwitchBindRule,
            AN_OT_AddIKBone,
            AN_OT_ClearConstraints,
            AN_OT_SaveIgnoreName,
