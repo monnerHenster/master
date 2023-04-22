@@ -109,6 +109,8 @@ class ArmatureBoneInfo():
         return rBones
 
     def findBoneChains(self):
+        # self.findRootBones()
+
         chain_layer = 0
         # boneChildren = self.rootBones
 
