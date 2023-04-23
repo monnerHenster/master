@@ -393,7 +393,8 @@ def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
     # bpy.data.objects['Armature'].select_set(state=True)
     bpy.ops.object.mode_set(mode='POSE')
 
-    scn_target_rig.animation_data.action = None
+    if scn_target_rig.animation_data:
+        scn_target_rig.animation_data.action = None
 
     for bone_item in scn.my_bones_map:
         if bone_item.name != "" and bone_item.name != "None" and context.active_object.pose.bones.get(bone_item.name):
@@ -967,28 +968,35 @@ class AN_OT_ApplyRestPose(bpy.types.Operator):
         # return {'FINISHED'}
         bpy.context.view_layer.update()
 
-        copy_transforms_all(temp_source_rig,scn.my_source_rig)
-        bpy.context.view_layer.update()
+        if scn.my_source_rig.animation_data:
+            i = 0
+            while i < 2:
+                copy_transforms_all(temp_source_rig,scn.my_source_rig)
+                bpy.context.view_layer.update()
 
-        select_mode(scn.my_source_rig,'POSE')
-        bpy.ops.pose.select_all(action='SELECT')
-        # return {'FINISHED'}
+                select_mode(scn.my_source_rig,'POSE')
+                bpy.ops.pose.select_all(action='SELECT')
 
-        bpy.ops.nla.bake(
-		frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
-		frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
-		step=1,
-		only_selected=True,
-		visual_keying=True,
-        clear_constraints = True,
-		# use_current_action=True,
-		bake_types={'POSE'}
-        )
-        # return {'FINISHED'}
+            # return {'FINISHED'}
+                bpy.context.view_layer.update()
 
-        select_mode(temp_source_rig,'OBJECT')
-        bpy.ops.object.select_grouped(extend=True, type='CHILDREN_RECURSIVE')
-        bpy.ops.object.delete()
+                bpy.ops.nla.bake(
+                frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
+                frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
+                step=1,
+                only_selected=True,
+                visual_keying=True,
+                clear_constraints = True,
+                # use_current_action=True,
+                bake_types={'POSE'}
+                )
+                # return {'FINISHED'}
+                bpy.context.view_layer.update()
+                i += 1
+
+            select_mode(temp_source_rig,'OBJECT')
+            bpy.ops.object.select_grouped(extend=True, type='CHILDREN_RECURSIVE')
+            bpy.ops.object.delete()
 
         return {'FINISHED'}
 
