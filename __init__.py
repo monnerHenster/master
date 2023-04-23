@@ -756,6 +756,7 @@ def copy_rest_pose(bone_map):
     selects_mode([scn.my_source_rig,scn.my_target_rig],"POSE")
     for pb in scn.my_source_rig.pose.bones:
         pb.matrix_basis = Matrix() 
+    mode = 1
     for item in bone_map:
         bpy.context.view_layer.update()
         pb1 = scn.my_source_rig.pose.bones[item.source_bone]
@@ -763,19 +764,23 @@ def copy_rest_pose(bone_map):
         v1 = pb1.tail - pb1.head
         v1.normalize()
         v2 = pb2.tail - pb2.head
-        temp = v2[1]
-        v2[1] = -v2[2]
-        v2[2] = temp
-        v2.normalize()
-        rot = v1.rotation_difference(v2)
-        m = (
-        Matrix.Translation(pb1.head) @
-        rot.to_matrix().to_4x4() @
-        Matrix.Translation(-pb1.head)
-        )
-        temp_head = pb1.head.copy()
-        # pb1.matrix = pb1.matrix @ rot.to_matrix().to_4x4() 
-        pb1.matrix = m @ pb1.matrix
+        if mode == 1:
+            pb1.matrix = pb2.matrix
+            pass
+        else:
+            temp = v2[1]
+            v2[1] = -v2[2]
+            v2[2] = temp
+            v2.normalize()
+            rot = v1.rotation_difference(v2)
+            m = (
+            Matrix.Translation(pb1.head) @
+            rot.to_matrix().to_4x4() @
+            Matrix.Translation(-pb1.head)
+            )
+            temp_head = pb1.head.copy()
+            # pb1.matrix = pb1.matrix @ rot.to_matrix().to_4x4() 
+            pb1.matrix = m @ pb1.matrix
 
 class TestStringFunction(bpy.types.PropertyGroup):
     test_string:bpy.props.StringProperty(set=None)
