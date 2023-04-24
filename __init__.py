@@ -756,18 +756,24 @@ def copy_rest_pose(bone_map):
     selects_mode([scn.my_source_rig,scn.my_target_rig],"POSE")
     for pb in scn.my_source_rig.pose.bones:
         pb.matrix_basis = Matrix() 
-    mode = 1
-    for item in bone_map:
-        bpy.context.view_layer.update()
-        pb1 = scn.my_source_rig.pose.bones[item.source_bone]
-        pb2 = scn.my_target_rig.pose.bones[item.name]
-        v1 = pb1.tail - pb1.head
-        v1.normalize()
-        v2 = pb2.tail - pb2.head
-        if mode == 1:
+
+    if scn.my_copy_rest_pose_rule == 'U2U':
+        for item in bone_map:
+            pb1 = scn.my_source_rig.pose.bones[item.source_bone]
+            pb2 = scn.my_target_rig.pose.bones[item.name]  
+            mat_loc = Matrix.Translation(pb.head)
             pb1.matrix = pb2.matrix
-            pass
-        else:
+            bpy.context.view_layer.update()
+            # pb1.matrix = mat_loc @ pb1.matrix
+
+    elif scn.my_copy_rest_pose_rule == 'U2M':
+        for item in bone_map:
+            bpy.context.view_layer.update()
+            pb1 = scn.my_source_rig.pose.bones[item.source_bone]
+            pb2 = scn.my_target_rig.pose.bones[item.name]
+            v1 = pb1.tail - pb1.head
+            v1.normalize()
+            v2 = pb2.tail - pb2.head
             temp = v2[1]
             v2[1] = -v2[2]
             v2[2] = temp
@@ -778,8 +784,6 @@ def copy_rest_pose(bone_map):
             rot.to_matrix().to_4x4() @
             Matrix.Translation(-pb1.head)
             )
-            temp_head = pb1.head.copy()
-            # pb1.matrix = pb1.matrix @ rot.to_matrix().to_4x4() 
             pb1.matrix = m @ pb1.matrix
 
 class TestStringFunction(bpy.types.PropertyGroup):
@@ -1506,7 +1510,13 @@ class ChainList_PT(bpy.types.Panel):
             row.operator('an.save_bind_rule')
             row.operator('an.save_bind_rule_reset')
 
-
+        # copy rest pose模式设置
+        box = self.layout.box()
+        row = box.row()
+        row.label(text='set copy rest pose rule')
+        row.operator('an.copy_rest_pose')
+        row = box.row()
+        row.prop(scn,'my_copy_rest_pose_rule')
 
         # 骨骼链表
         self.layout.template_list("ARP_UL_items", "", scn, "my_chain_map", scn, "my_chain_map_index",rows = 11)
@@ -1560,6 +1570,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
+    bpy.types.Scene.my_copy_rest_pose_rule = bpy.props.EnumProperty(items=(('U2U','Unreal to Unreal','Unreal to Unreal'),('U2M','Unreal to Mixamo','Unreal to Mixamo')))
     bpy.types.Scene.my_test_string = bpy.props.StringProperty(update=update_string)
     bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
     bpy.types.Scene.my_sourceBoneChain = bpy.props.CollectionProperty(type=boneList)
@@ -1589,6 +1600,7 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
+    del bpy.types.Scene.my_copy_rest_pose_rule
     del bpy.types.Scene.my_test_string
     del bpy.types.Scene.enum_Add
     del bpy.types.Scene.my_source_chains
