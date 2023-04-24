@@ -17,7 +17,7 @@ from .ReampArmature import *
 import math
 
 bl_info = {
-    "name" : "PanelPratise",
+    "name" : "AniTool",
     "author" : "M",
     "description" : "",
     "blender" : (2, 80, 0),
@@ -91,10 +91,6 @@ def sortBoneChains(self,context,scnList):
 
 
 def getItem(self,context):
-    # items = (
-    #     ("humanoid", "Humanoid", "Humanoid rig type, simple bones hierarchy to ensure animation retargetting"),
-    #     ("mped", "Universal", "Universal rig type, simple bones hierarchy for any creature (dog, spider...)")
-    #     )
     items = []
     for item in bpy.context.scene.my_target_chains.values():
         Bones = ''
@@ -103,10 +99,6 @@ def getItem(self,context):
             Bones += bone.name
         items.append((Bones,Bones,''))
 
-    # bpy.context.scene.enum_Add.add()
-    # print(items)
-    # items = []
-    
     return items
 
 def get_enum(self):
@@ -441,6 +433,31 @@ def update_string(self,context):
     if TOGGLE_UPDATE:
     # bpy.ops.build_chains.go()
         filter_name()
+
+def set_ignore_source(self,value):
+    global boneIgnoreName
+    self.enteranl_add_to_ignore_source = value
+    if value:
+        ignore_name = self.source_chain.split(',')[0]
+        boneIgnoreName += ','
+        boneIgnoreName += ignore_name
+        bpy.ops.build_list.go()
+
+def get_ignore_source(self):
+    return self.enteranl_add_to_ignore_source
+
+def set_ignore_target(self,value):
+    global boneIgnoreName
+    self.enteranl_add_to_ignore_target = value
+    if value:
+        ignore_name = self.name.split(',')[0]
+        boneIgnoreName += ','
+        boneIgnoreName += ignore_name
+        bpy.ops.build_list.go()
+
+def get_ignore_target(self):
+    return self.enteranl_add_to_ignore_target
+
 
 def recoerd_old_value():
     scn = bpy.context.scene
@@ -834,6 +851,10 @@ class BoneChainsList(bpy.types.PropertyGroup):
 
 class ChainMap(bpy.types.PropertyGroup):
     is_root:bpy.props.BoolProperty()
+    add_to_ignore_source:bpy.props.BoolProperty(set=set_ignore_source,get=get_ignore_source)
+    enteranl_add_to_ignore_source:bpy.props.BoolProperty()
+    add_to_ignore_target:bpy.props.BoolProperty(set=set_ignore_target,get=get_ignore_target)
+    enteranl_add_to_ignore_target:bpy.props.BoolProperty()
     index:bpy.props.IntProperty()
     source_chain: bpy.props.StringProperty()
     name:bpy.props.StringProperty(update=update_string)
@@ -1530,6 +1551,8 @@ class ChainList_PT(bpy.types.Panel):
             row.prop_search(scn.my_chain_map[scn.my_chain_map_index],'name',scn.my_target_bone_chains_list[scn.my_chain_map_index],'bone_chains',text='')
             row = box.row(align=True)
             row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
+            row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_source')
+            row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_target')
 
 
 classes = [AN_OT_ApplyRestPose,
