@@ -30,7 +30,7 @@ bl_info = {
 
 my_source_chains = []
 my_target_chains = []
-TOGGLE_UPDATE = True
+Toggle_Update = True
 save_new_bind_rule = False
 save_new_ignore_name = False
 # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
@@ -430,7 +430,7 @@ def get_string(self):
     return self.my_test_string
 
 def update_string(self,context):
-    if TOGGLE_UPDATE:
+    if Toggle_Update:
     # bpy.ops.build_chains.go()
         filter_name()
 
@@ -528,6 +528,8 @@ def selects_mode(objs,mode):
 
 def select_mode(obj,mode):
     scn = bpy.context.scene
+    bpy.context.view_layer.objects.active = obj
+
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
 
@@ -768,6 +770,35 @@ def duplicate(obj, data=True, actions=True, collection=None):
     bpy.context.collection.objects.link(obj_copy)
     return obj_copy
 
+def bake_root_action(source_rig,target_rig):
+    bpy.context.view_layer.update()
+    select_mode(source_rig,'POSE')
+    bpy.ops.pose.select_all(action='SELECT')
+    if source_rig.animation_data:
+        i = 0
+        while i < 2:
+            copy_transforms_all(source_rig,target_rig)
+            bpy.context.view_layer.update()
+
+            select_mode(target_rig,'POSE')
+            bpy.ops.pose.select_all(action='SELECT')
+
+            bpy.context.view_layer.update()
+
+            bpy.ops.nla.bake(
+            frame_start=int(target_rig.animation_data.action.frame_range[0]),
+            frame_end=int(target_rig.animation_data.action.frame_range[1]),
+            step=1,
+            only_selected=True,
+            visual_keying=True,
+            clear_constraints = True,
+            bake_types={'POSE'}
+            )
+            bpy.context.view_layer.update()
+            i += 1
+
+
+
 def copy_rest_pose(bone_map):
     scn = bpy.context.scene
     selects_mode([scn.my_source_rig,scn.my_target_rig],"POSE")
@@ -1007,7 +1038,6 @@ class AN_OT_ApplyRestPose(bpy.types.Operator):
                 select_mode(scn.my_source_rig,'POSE')
                 bpy.ops.pose.select_all(action='SELECT')
 
-            # return {'FINISHED'}
                 bpy.context.view_layer.update()
 
                 bpy.ops.nla.bake(
@@ -1017,10 +1047,8 @@ class AN_OT_ApplyRestPose(bpy.types.Operator):
                 only_selected=True,
                 visual_keying=True,
                 clear_constraints = True,
-                # use_current_action=True,
                 bake_types={'POSE'}
                 )
-                # return {'FINISHED'}
                 bpy.context.view_layer.update()
                 i += 1
 
@@ -1040,10 +1068,6 @@ class AN_OT_AddIKBone(bpy.types.Operator):
         scn = bpy.context.scene
         build_bones_map()
 
-        # copy_rest_pose(scn.my_bones_map)
-        copy_transforms(scn.my_bones_map)
-        return {'FINISHED'}
-
         global ik_bone
         ik_bone_list = ik_bone.split(',')
         select_mode(scn.my_source_rig,'EDIT')
@@ -1054,30 +1078,24 @@ class AN_OT_AddIKBone(bpy.types.Operator):
             bone_IK.tail = bone_IK.head[:]
             bone_IK.tail[1] += 20
 
-        
-
+        bpy.context.view_layer.update()        
+        select_mode(scn.my_source_rig,'POSE')
         for bone in ik_bone_list:
-            bone_IK = create_edit_bone(bone+'_IK')
+            bone_IK = scn.my_source_rig.pose.bones.get(bone+'_IK')
             cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
             cst.target = scn.my_source_rig
             cst.head_tail = 1
             cst.subtarget = bone
 
+        temp_source_rig = duplicate(scn.my_source_rig)
+        bpy.context.view_layer.update()
         select_mode(scn.my_source_rig,'POSE')
-
         bpy.ops.pose.select_all(action='SELECT')
 
-        bpy.ops.nla.bake(
-		frame_start=int(scn.my_target_rig.animation_data.action.frame_range[0]),
-		frame_end=int(scn.my_target_rig.animation_data.action.frame_range[1]),
-		step=1,
-		only_selected=True,
-		visual_keying=True,
-        clear_constraints = True,
-		# use_current_action=True,
-		bake_types={'POSE'}
-        )
-        # return {'FINISHED'}
+        bake_root_action(temp_source_rig,scn.my_source_rig)
+        select_mode(temp_source_rig,'OBJECT')
+        bpy.ops.object.select_grouped(extend=True, type='CHILDREN_RECURSIVE')
+        bpy.ops.object.delete()
 
         select_mode(scn.my_source_rig,'POSE')
         for bone in ik_bone_list:
@@ -1096,8 +1114,8 @@ class AutomapBoneChainsOP(bpy.types.Operator):
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
-        global TOGGLE_UPDATE
-        TOGGLE_UPDATE = False
+        global Toggle_Update
+        Toggle_Update = False
         rule_source_name_LR = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_LR]
         rule_source_name_body = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_body]
 
@@ -1127,7 +1145,7 @@ class AutomapBoneChainsOP(bpy.types.Operator):
                                         break
                         break
 
-        TOGGLE_UPDATE = True
+        Toggle_Update = True
         recoerd_old_value()
 
 
@@ -1240,9 +1258,9 @@ class CopyRotation(bpy.types.Operator):
             # print(source_chain)
                     # bpy.data.objects['root.001']
 
-class AN_OT_ChangeRestPose(bpy.types.Operator):
-    bl_idname = 'an.changerestpose'
-    bl_label = 'ChangeRestPose'
+class AN_OT_AlightRestBone(bpy.types.Operator):
+    bl_idname = 'an.alight_rest_bone'
+    bl_label = 'Alight Rest Bone'
     bl_options = {'UNDO'}
 
     def execute(self, context: 'Context'):
@@ -1252,6 +1270,7 @@ class AN_OT_ChangeRestPose(bpy.types.Operator):
         rotate_edit_bones()
         bpy.context.view_layer.update()
         connect_bones()
+        build_bones_map()
         bpy.context.view_layer.update()
         orgin_target_rig = scn.my_target_rig
         orgin_source_rig = scn.my_source_rig
@@ -1464,7 +1483,7 @@ class OpPanel(bpy.types.Panel):
         row.operator("clear_ignore_bone.go")
         row.operator("automap_bone_chains.go")
         row = self.layout.row()
-        row.operator("an.changerestpose")
+        row.operator("an.alight_rest_bone")
         row.operator("auto_set_chain.go")
         row.operator("build_list.go")
         row.operator("copy_rotation.go")
@@ -1563,7 +1582,7 @@ classes = [AN_OT_ApplyRestPose,
            AN_OT_SaveIgnoreName,
            AN_OT_BindRuleReset,
            AN_OT_Bind_Rule,
-           AN_OT_ChangeRestPose,
+           AN_OT_AlightRestBone,
            AN_PGT_ChainBindRule,
            TestStringFunction,
            OpPanel,
@@ -1581,8 +1600,8 @@ classes = [AN_OT_ApplyRestPose,
            BoneChainsList,
            myString,
            clearIgnoreBone,
-           RemapPanel,
-           BoneChainsPanel,
+        #    RemapPanel,
+        #    BoneChainsPanel,
            SaveBoneChainsOP,
            BuildChains,
            enumAdd,
