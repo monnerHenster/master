@@ -30,7 +30,8 @@ bl_info = {
 
 my_source_chains = []
 my_target_chains = []
-Toggle_Update = True
+toggle_update = True
+toggle_set_chain_map_name = True
 save_new_bind_rule = False
 save_new_ignore_name = False
 # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
@@ -430,7 +431,7 @@ def get_string(self):
     return self.my_test_string
 
 def update_string(self,context):
-    if Toggle_Update:
+    if toggle_update:
     # bpy.ops.build_chains.go()
         filter_name()
 
@@ -463,6 +464,20 @@ def recoerd_old_value():
     scn = bpy.context.scene
     for item in scn.my_chain_map:
         item.old_name = item.name
+
+def get_chain_map_name(self):
+    return self.in_name
+
+def set_chain_map_name(self,value):
+    scn = bpy.context.scene
+    global toggle_set_chain_map_name
+    if toggle_set_chain_map_name == True:
+        toggle_set_chain_map_name = False
+        for item in scn.my_chain_map:
+            if item.name == value:
+                item.name = self.name
+    self.in_name = value
+    toggle_set_chain_map_name = True
 
 def filter_name():
     scn = bpy.context.scene
@@ -888,7 +903,8 @@ class ChainMap(bpy.types.PropertyGroup):
     enteranl_add_to_ignore_target:bpy.props.BoolProperty()
     index:bpy.props.IntProperty()
     source_chain: bpy.props.StringProperty()
-    name:bpy.props.StringProperty(update=update_string)
+    name:bpy.props.StringProperty(set=set_chain_map_name,get=get_chain_map_name)
+    in_name:bpy.props.StringProperty()
     old_name:bpy.props.StringProperty()
     
 
@@ -1114,39 +1130,46 @@ class AutomapBoneChainsOP(bpy.types.Operator):
 
     def execute(self, context: 'Context'):
         scn = bpy.context.scene
-        global Toggle_Update
-        Toggle_Update = False
-        rule_source_name_LR = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_LR]
-        rule_source_name_body = [(a.source_name,a.name) for a in scn.my_chain_bind_rule_body]
+        global toggle_update
+        toggle_update = False
+        rule_source_name_LR = [(a.source_name.lower(),a.name.lower()) for a in scn.my_chain_bind_rule_LR]
+        rule_source_name_body = [(a.source_name.lower(),a.name.lower()) for a in scn.my_chain_bind_rule_body]
 
-        temp_my_chain_map = [a.name for a in scn.my_chain_map]
+        global toggle_set_chain_map_name
+        toggle_set_chain_map_name = False
         # temp_my_chain_map = [a.name for a in my_target_chains]
         for idx,item in enumerate(scn.my_chain_map):
-            find_state = False
-            for item_target in (my_target_chains):
-                if item.source_chain == ','.join(a.name for a in  item_target['chain']):
-                    item.name = ','.join(a.name for a in  item_target['chain'])
+            for item_target in scn.my_target_bone_chains_list[idx].bone_chains:
+                if item.source_chain == item_target.bone_chain:
+                    item.name = item_target.bone_chain
+                    break
+                
+            # find_state = False
+            # for item_target in (my_target_chains):
+                # if item.source_chain == ','.join(a.name for a in  item_target['chain']):
+                #     item.name = ','.join(a.name for a in  item_target['chain'])
                     find_state = True
                     break
-            
-            if find_state == False:
-                for rule_body in rule_source_name_body:
-                    if item.source_chain.find(rule_body[0]) >= 0 :
-                        for rule_LR in rule_source_name_LR:
-                            if item.source_chain.find(rule_LR[0]) >= 0 :
-                                for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
-                                    if target_name.name.find(rule_body[1]) >=0 and target_name.name.find(rule_LR[1]) >= 0:
-                                        item.name = target_name.name
-                                        break
-                                break
+            # for item_target in scn.my_target_bone_chains_list[idx].bone_chains:
+            # if find_state == False:
+            for rule_body in rule_source_name_body:
+                if item.source_chain.lower().find(rule_body[0]) >= 0 :
+                    for rule_LR in rule_source_name_LR:
+                        if item.source_chain.lower().find(rule_LR[0]) >= 0 :
                             for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
-                                    if target_name.name.find(rule_body[1]) >=0 :
-                                        item.name = target_name.name
-                                        break
-                        break
+                                if (target_name.name.lower().find(rule_body[1]) >=0 or target_name.name.lower().find(rule_body[0]) >=0) and target_name.name.lower().find(rule_LR[1]) >= 0:
+                                    item.name = target_name.name
+                                    break
+                            break
+                    for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
+                            if target_name.name.lower().find(rule_body[1]) >=0 or target_name.name.lower().find(rule_body[0]) >=0:
+                                item.name = target_name.name
+                                break
+                    break
 
-        Toggle_Update = True
+        toggle_update = True
         recoerd_old_value()
+        toggle_set_chain_map_name = False
 
 
         return {'FINISHED'}
