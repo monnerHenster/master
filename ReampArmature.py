@@ -21,9 +21,9 @@ class ArmatureBoneInfo():
         self.armature = armature
         # self.rootBones:list[bpy.types.PoseBone]=[]
         self.rootBones:dict[str:int,str:bpy.types.PoseBone] = []
-        self.findRootBones()
         self._boneIgnoreName:list[str] = []
         self.boneIgnore:list[bpy.types.PoseBone] = []
+        self.findRootBones()
         self.findBoneChains()
     
     @property
@@ -68,14 +68,8 @@ class ArmatureBoneInfo():
     def findRootBones(self):
         # self.rootBones = [boneIndex]
         for orginBone in self.armature.pose.bones:
-            if not orginBone.parent:
-                # newBone = []
-                # newBone = boneIndex()
-                # newBone.bone = orginBone
-                # newBone.index = 0
-                if self.check_helper_bones(orginBone):
-                    continue
-                else:
+            if orginBone not in self.boneIgnore and not self.check_helper_bones(orginBone):
+                if not orginBone.parent or orginBone.parent in self.boneIgnore:
                     self.rootBones.append(orginBone)
 
     bone_chain = [boneIndex] 
@@ -109,10 +103,10 @@ class ArmatureBoneInfo():
         return rBones
 
     def findBoneChains(self):
-        # self.findRootBones()
+        self.findRootBones()
 
         chain_layer = 0
-        # boneChildren = self.rootBones
+        boneChildren = self.rootBones
 
         boneChildren = list(set(self.rootBones)-set(self.boneIgnore))
         bone_tracking = []

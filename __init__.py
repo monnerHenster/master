@@ -1565,13 +1565,13 @@ class ChainList_PT(bpy.types.Panel):
         if scn.my_chain_map_index >= 0 :
             box = self.layout.box()
             row = box.row(align=True)
-
-            row.label(text=scn.my_chain_map[scn.my_chain_map_index].source_chain)
-            row.prop_search(scn.my_chain_map[scn.my_chain_map_index],'name',scn.my_target_bone_chains_list[scn.my_chain_map_index],'bone_chains',text='')
-            row = box.row(align=True)
-            row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
-            row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_source')
-            row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_target')
+            if len(scn.my_chain_map) > 0 :
+                row.label(text=scn.my_chain_map[scn.my_chain_map_index].source_chain)
+                row.prop_search(scn.my_chain_map[scn.my_chain_map_index],'name',scn.my_target_bone_chains_list[scn.my_chain_map_index],'bone_chains',text='')
+                row = box.row(align=True)
+                row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
+                row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_source')
+                row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_target')
 
 
 classes = [AN_OT_ApplyRestPose,
