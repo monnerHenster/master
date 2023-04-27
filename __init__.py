@@ -470,14 +470,17 @@ def get_chain_map_name(self):
 
 def set_chain_map_name(self,value):
     scn = bpy.context.scene
+    self.test += 1
+
+    print(self.test)
     global toggle_set_chain_map_name
     if toggle_set_chain_map_name == True:
         toggle_set_chain_map_name = False
         for item in scn.my_chain_map:
             if item.name == value:
                 item.name = self.name
+        toggle_set_chain_map_name = True    
     self.in_name = value
-    toggle_set_chain_map_name = True
 
 def filter_name():
     scn = bpy.context.scene
@@ -906,6 +909,7 @@ class ChainMap(bpy.types.PropertyGroup):
     name:bpy.props.StringProperty(set=set_chain_map_name,get=get_chain_map_name)
     in_name:bpy.props.StringProperty()
     old_name:bpy.props.StringProperty()
+    test:bpy.props.IntProperty()
     
 
 class BonesMap(bpy.types.PropertyGroup):
@@ -1169,7 +1173,7 @@ class AutomapBoneChainsOP(bpy.types.Operator):
 
         toggle_update = True
         recoerd_old_value()
-        toggle_set_chain_map_name = False
+        toggle_set_chain_map_name = True
 
 
         return {'FINISHED'}
