@@ -470,9 +470,6 @@ def get_chain_map_name(self):
 
 def set_chain_map_name(self,value):
     scn = bpy.context.scene
-    self.test += 1
-
-    print(self.test)
     global toggle_set_chain_map_name
     if toggle_set_chain_map_name == True:
         toggle_set_chain_map_name = False
