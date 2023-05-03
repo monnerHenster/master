@@ -15,6 +15,11 @@ import bpy
 import random
 from .ReampArmature import *
 import math
+from bpy_extras.io_utils import ExportHelper
+from . import decoder
+from . import encoder
+from . import tz
+
 
 bl_info = {
     "name" : "AniTool",
@@ -812,7 +817,54 @@ def bake_root_action(source_rig,target_rig):
             bpy.context.view_layer.update()
             i += 1
 
+def export_map(file_path):
+    scn = bpy.context.scene
 
+    # add extension
+    if not file_path.endswith(".toml"):
+        file_path += ".toml"
+    
+    file = open(file_path, 'w', encoding='utf8', newline='\n')
+
+    file.write('')
+
+    config = {}
+    common = {}
+    chains = {}
+    config = {'common':common,'chains':chains}
+    common['ignore_name'] = scn.my_ignore_bone_name
+
+    name = locals()
+    for idx,chain in enumerate(scn.my_chain_map):
+        idx = str(idx)
+        name[str(chain.source_chain)] = {}
+        # name[str(chain.source_chain)]['source_chain'] = chain.source_chain
+        name[str(chain.source_chain)]['target_chain'] = chain.name
+        name[str(chain.source_chain)]['is_root'] = chain.is_root
+        chains[str(chain.source_chain)] = name[str(chain.source_chain)]
+    r = encoder.dump(config, file)
+    file.close()
+    return
+
+def import_map(file_path):
+    scn = bpy.context.scene
+    file = open(file_path, 'r', encoding='utf8', newline='\n')
+
+    config = decoder.load(file)
+    scn.my_ignore_bone_name = config['common']['ignore_name']
+    global save_new_ignore_name 
+    save_new_ignore_name = True
+    bpy.ops.build_list.go()
+
+    for chain in scn.my_chain_map:
+        for source_chain in config['chains']:
+            if source_chain == chain.source_chain:
+                chain.name = config['chains'][source_chain]['target_chain']
+                chain.is_root = config['chains'][source_chain]['is_root']
+                del config['chains'][source_chain]
+                break
+    file.close()
+    return
 
 def copy_rest_pose(bone_map):
     scn = bpy.context.scene
@@ -1074,7 +1126,47 @@ class AN_OT_ApplyRestPose(bpy.types.Operator):
             bpy.ops.object.delete()
 
         return {'FINISHED'}
+    
+class AN_OT_ImportMap(bpy.types.Operator):
+    bl_idname = 'an.import_map'
+    bl_label = 'Import Map'
+    bl_options = {'UNDO'}
 
+    filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'})
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH", default='toml')
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        filename_ext = ".toml"
+        filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'}, maxlen=255)
+        import_map(self.filepath)
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        self.filepath = 'remap_preset.toml'
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+class AN_OT_ExportMap(bpy.types.Operator):
+    bl_idname = 'an.export_map'
+    bl_label = 'Export Map'
+    bl_options = {'UNDO'}
+
+    filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'})
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH", default='toml')
+
+    def execute(self, context: 'Context'):
+        scn = bpy.context.scene
+        filename_ext = ".toml"
+        filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'}, maxlen=255)
+        export_map(self.filepath)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        self.filepath = 'remap_preset.toml'
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+        
 
 class AN_OT_AddIKBone(bpy.types.Operator):
     bl_idname = 'an.add_ikbone'
@@ -1585,6 +1677,12 @@ class ChainList_PT(bpy.types.Panel):
         # 骨骼链表
         self.layout.template_list("ARP_UL_items", "", scn, "my_chain_map", scn, "my_chain_map_index",rows = 11)
 
+        # 匹配信息导出和导入
+        box = self.layout.box()
+        row = box.row()
+        row.operator('an.export_map')
+        row.operator('an.import_map')
+
         # 骨骼链信息配置
         if scn.my_chain_map_index >= 0 :
             box = self.layout.box()
@@ -1598,7 +1696,9 @@ class ChainList_PT(bpy.types.Panel):
                 row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_target')
 
 
-classes = [AN_OT_ApplyRestPose,
+classes = [AN_OT_ExportMap,
+           AN_OT_ImportMap,
+           AN_OT_ApplyRestPose,
            AN_OT_CopyRestPose,
            AN_OT_SwitchBindRule,
            AN_OT_AddIKBone,
