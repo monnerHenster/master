@@ -866,6 +866,23 @@ def import_map(file_path):
     file.close()
     return
 
+def root_motion():
+    scn = bpy.context.scene
+    source_action = scn.my_source_rig.animation_data.action
+    location_index = 0
+    for fc in source_action.fcurves:
+        if fc.data_path == 'location':
+            scn.my_target_rig.keyframe_insert(data_path=fc.data_path, index=fc.array_index, group=scn.my_target_rig.data.name,frame=0)
+            target_fc = scn.my_target_rig.animation_data.action.fcurves.find(fc.data_path,index=fc.array_index)
+            # print(target_fc.data_path)
+            for kp in fc.keyframe_points:
+                scn.my_target_rig.keyframe_insert(data_path=fc.data_path, index=fc.array_index, group=scn.my_target_rig.data.name,frame=kp.co[0])
+                target_kp = target_fc.keyframe_points[-1]
+                target_kp.co = kp.co
+
+        if location_index >= 2:
+            break
+
 def copy_rest_pose(bone_map):
     scn = bpy.context.scene
     selects_mode([scn.my_source_rig,scn.my_target_rig],"POSE")
@@ -1030,28 +1047,6 @@ class SaveBoneChainsOP(bpy.types.Operator):
         scn = bpy.context.scene
         scn.my_enum_bone_chain.add()
 
-        # item = scn.my_customeProperty.add()
-
-        # for idx,item in enumerate(scn.my_customeProperty):
-        #     attr = [a for a in dir(item)]
-        #     for b in attr:
-        #         print(b,getattr(item,b))
-
-        # for idx,bone_chain in enumerate(scn.my_source_chains):
-        #     if bone_chain.isExtraBone == True:
-        #         for idx,bone in enumerate(bone_chain.bone_chain):
-        #             item = scn.my_ignore_bone_name.add()
-        #             item.name = bone.name
-
-        #             break
-                # bone_chain.remove()
-        # for idx,bone in enumerate(scn.my_ignore_bone_name):
-        #     pass
-            # print(bone.name,idx)
-        # print
-      
-
-        # context.scene.BoneChainsList.remove(0)
         return {'FINISHED'}        
     
 class clearIgnoreBone(bpy.types.Operator):
@@ -1350,16 +1345,47 @@ class BuildList(bpy.types.Operator):
         select_mode(scn.my_source_rig,'OBJECT')
         return {'FINISHED'}
 
-class CopyRotation(bpy.types.Operator):
+class AN_OT_CopyRotation(bpy.types.Operator):
     bl_idname = 'copy_rotation.go'
     bl_label = 'CopyRotation'
     bl_options = {'UNDO'}
 
     def execute(self, context: 'Context'):
+
+        # return {'FINISHED'}
+
         scn = bpy.context.scene
         build_bones_map()
         build_bone_tweak(self,context,scn.my_source_chains,scn.my_source_rig)
         select_mode(scn.my_source_rig,'OBJECT')
+
+        select_mode(scn.my_target_rig,'POSE')
+        bpy.ops.pose.select_all(action='SELECT')
+        bpy.context.view_layer.update()
+
+        fcruves = scn.my_source_rig.animation_data.action.fcurves
+        for fc in fcruves:
+            if fc.group.name == scn.my_source_rig.data.name:
+                fc.mute = True
+
+        bpy.ops.nla.bake(
+        frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
+        frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
+        step=1,
+        only_selected=True,
+        visual_keying=True,
+        clear_constraints = True,
+        bake_types={'POSE'}
+        )
+
+        for fc in fcruves:
+            if fc.group.name == scn.my_source_rig.data.name:
+                fc.mute = False
+
+        root_motion()
+
+
+
         return {'FINISHED'}
     
 
@@ -1594,8 +1620,6 @@ class OpPanel(bpy.types.Panel):
 
     def draw(self, context: 'Context'):
         row = self.layout.row()
-        row.operator("build_chains.go")
-        row.operator("savebonechains.go")
         row.operator("clear_ignore_bone.go")
         row.operator("automap_bone_chains.go")
         row = self.layout.row()
@@ -1712,7 +1736,7 @@ classes = [AN_OT_ExportMap,
            OpPanel,
            ARP_UL_items,
            BonesMap,
-           CopyRotation,
+           AN_OT_CopyRotation,
            ChainMap,
            ChainList_PT,
            BuildList,
