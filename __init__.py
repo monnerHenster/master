@@ -39,7 +39,6 @@ toggle_update = True
 toggle_set_chain_map_name = True
 save_new_bind_rule = False
 save_new_ignore_name = False
-# boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
 boneIgnoreName = 'lowerarm_r_IK,calf_r_IK,lowerarm_l_IK,calf_l_IK,thigh_twist_01_l,calf_twist_01_r,calf_twist_01_l,thigh_twist_01_r,upperarm_twist_01_l,upperarm_twist_01_r,lowerarm_twist_01_l,lowerarm_twist_01_r,ik_hand_root,ik_hand_r,ik_foot_root,ik_foot_r,ik_foot_l'
 ik_bone = 'lowerarm_r,calf_r,lowerarm_l,calf_l'
 
@@ -437,7 +436,7 @@ def get_string(self):
 
 def update_string(self,context):
     if toggle_update:
-    # bpy.ops.build_chains.go()
+    # bpy.ops.an.build_chains()
         filter_name()
 
 def set_ignore_source(self,value):
@@ -883,6 +882,14 @@ def root_motion():
         if location_index >= 2:
             break
 
+def auto_add_ignore(source,target):
+    ignore = []
+    source_pb_list = [pb.name for pb in source.pose.bones]
+    for target_pb in target.pose.bones:
+        if target_pb.name not in source_pb_list:
+            ignore.append(target_pb.name)
+    return ignore
+
 def copy_rest_pose(bone_map):
     scn = bpy.context.scene
     selects_mode([scn.my_source_rig,scn.my_target_rig],"POSE")
@@ -986,31 +993,19 @@ class AN_PGT_ChainBindRule(bpy.types.PropertyGroup):
     source_name: bpy.props.StringProperty()
 
 #operator, connected the button that adds the params
-class BuildChains(bpy.types.Operator):
-    bl_idname = 'build_chains.go'
-    bl_label = 'showBonechains'
+class AN_OT_BuildChains(bpy.types.Operator):
+    bl_idname = 'an.build_chains'
+    bl_label = 'BuildChains'
     slot: bpy.props.IntProperty()
     
     def execute(self, context):
         scn = bpy.context.scene
         scn.my_source_chains.clear()
 
-        # boneIgnoreName = ['thigh_twist_01_l','calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
-        # boneIgnoreName = ['calf_twist_01_r','calf_twist_01_l','thigh_twist_01_r','upperarm_twist_01_l','upperarm_twist_01_r','lowerarm_twist_01_l','lowerarm_twist_01_r','ik_hand_root','ik_hand_r','ik_foot_root','ik_foot_r','ik_foot_l']
-        
-        # for idx,bone in enumerate(scn.my_ignore_bone_name):
-        #     boneIgnoreName.append(str(bone.name))
         self.sourceArmature = ArmatureBoneInfo(scn.my_source_rig)
         self.targetArmature = ArmatureBoneInfo(scn.my_target_rig)
-        # a.boneIgnoreName.append('thigh_twist_01_l')
-        global boneIgnoreName
-        if save_new_ignore_name == True:
-            boneIgnoreName_str = scn.my_ignore_bone_name
-            boneIgnoreName_list = boneIgnoreName_str.split(',')
 
-        else:
-            scn.my_ignore_bone_name = boneIgnoreName
-            boneIgnoreName_list = scn.my_ignore_bone_name.split(',')
+        boneIgnoreName_list = scn.my_ignore_bone_name.split(',')
 
         self.sourceArmature.boneIgnoreName += boneIgnoreName_list
         self.targetArmature.boneIgnoreName += boneIgnoreName_list
@@ -1021,19 +1016,10 @@ class BuildChains(bpy.types.Operator):
         global my_target_chains
         my_target_chains = self.targetArmature.bone_chains
 
-        # print(my_source_chains)
-
-        # set_bone_chain(self,context,self.sourceArmature.bone_chains,scn.my_source_chains)
-        # set_bone_chain(self,context,self.targetArmature.bone_chains,scn.my_target_chains)
-
-        # sortBoneChains(self,context,scn.my_source_chains)
-        # sortBoneChains(self,context,scn.my_target_chains)
-
         scn.my_enum_bone_chain.clear()
         for item in scn.my_source_chains.values():
             scn.my_enum_bone_chain.add()
         
-        # newItems
         return {'FINISHED'}
 
 
@@ -1049,14 +1035,14 @@ class SaveBoneChainsOP(bpy.types.Operator):
 
         return {'FINISHED'}        
     
-class clearIgnoreBone(bpy.types.Operator):
-    bl_idname = 'clear_ignore_bone.go'
-    bl_label = 'clearIgnoreBone'
+class AN_OT_ClearIgnoreBone(bpy.types.Operator):
+    bl_idname = 'an.clear_ignore_bone'
+    bl_label = 'ClearIgnoreBone'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
-        scn.my_ignore_bone_name.clear()
+        scn.my_ignore_bone_name = ''
         return {'FINISHED'}
 
 class AN_OT_CopyRestPose(bpy.types.Operator):
@@ -1064,7 +1050,7 @@ class AN_OT_CopyRestPose(bpy.types.Operator):
     bl_label = 'Copy Rest Pose'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         build_bones_map()
         copy_rest_pose(scn.my_bones_map)
@@ -1076,7 +1062,7 @@ class AN_OT_ApplyRestPose(bpy.types.Operator):
     bl_label = 'Apply Rest Pose'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         temp_source_rig = duplicate(scn.my_source_rig)
         select_mode(scn.my_source_rig,'OBJECT')
@@ -1130,7 +1116,7 @@ class AN_OT_ImportMap(bpy.types.Operator):
     filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'})
     filepath: bpy.props.StringProperty(subtype="FILE_PATH", default='toml')
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         filename_ext = ".toml"
         filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'}, maxlen=255)
@@ -1150,7 +1136,7 @@ class AN_OT_ExportMap(bpy.types.Operator):
     filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'})
     filepath: bpy.props.StringProperty(subtype="FILE_PATH", default='toml')
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         filename_ext = ".toml"
         filter_glob: bpy.props.StringProperty(default="*.toml", options={'HIDDEN'}, maxlen=255)
@@ -1168,7 +1154,7 @@ class AN_OT_AddIKBone(bpy.types.Operator):
     bl_label = 'Add IKBone'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         build_bones_map()
 
@@ -1216,7 +1202,7 @@ class AutomapBoneChainsOP(bpy.types.Operator):
     bl_idname = 'automap_bone_chains.go'
     bl_label = 'AutomapBoneChains'
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         global toggle_update
         toggle_update = False
@@ -1267,7 +1253,7 @@ class autoSetChainOP(bpy.types.Operator):
     bl_label = 'autoSetChainOP'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         selectedChain = []
         freeChain = [ a.name for a in scn.my_target_chains]
@@ -1302,13 +1288,11 @@ class BuildList(bpy.types.Operator):
     bl_label = 'BuildList'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
 
         scn = bpy.context.scene
-        # print(scn.my_target_chains)
-        # print(scn.my_target_rig)
 
-        bpy.ops.build_chains.go()
+        bpy.ops.an.build_chains()
 
         scn.my_target_bone_chains_list.clear()
         scn.my_chain_map.clear()
@@ -1339,10 +1323,30 @@ class BuildList(bpy.types.Operator):
         if save_new_bind_rule == False:
             build_default_bind_rule()
 
-
         bpy.ops.automap_bone_chains.go()
-
         select_mode(scn.my_source_rig,'OBJECT')
+        return {'FINISHED'}
+
+class AN_OT_AutoAddIgnoe(bpy.types.Operator):
+    bl_idname = 'an.auto_add_ignore'
+    bl_label = 'AutoAddIgnoe'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        scn = bpy.context.scene
+        scn.my_ignore_bone_name += ','.join(auto_add_ignore(scn.my_source_rig,scn.my_target_rig))
+        scn.my_ignore_bone_name += ','.join(auto_add_ignore(scn.my_target_rig,scn.my_source_rig))
+        return {'FINISHED'}
+
+class AN_OT_AddDefaultIgnoe(bpy.types.Operator):
+    bl_idname = 'an.add_default_ignore'
+    bl_label = 'AddDefaultIgnoe'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        scn = bpy.context.scene
+        global boneIgnoreName
+        scn.my_ignore_bone_name += boneIgnoreName
         return {'FINISHED'}
 
 class AN_OT_CopyRotation(bpy.types.Operator):
@@ -1350,7 +1354,7 @@ class AN_OT_CopyRotation(bpy.types.Operator):
     bl_label = 'CopyRotation'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
 
         # return {'FINISHED'}
 
@@ -1378,6 +1382,7 @@ class AN_OT_CopyRotation(bpy.types.Operator):
         bake_types={'POSE'}
         )
 
+        fcruves = scn.my_source_rig.animation_data.action.fcurves
         for fc in fcruves:
             if fc.group.name == scn.my_source_rig.data.name:
                 fc.mute = False
@@ -1385,6 +1390,7 @@ class AN_OT_CopyRotation(bpy.types.Operator):
         root_motion()
 
 
+        select_mode(scn.my_source_rig,'OBJECT')
 
         return {'FINISHED'}
     
@@ -1405,7 +1411,7 @@ class AN_OT_AlightRestBone(bpy.types.Operator):
     bl_label = 'Alight Rest Bone'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         temp_source_rig = duplicate(scn.my_source_rig)
         bpy.context.view_layer.update()
@@ -1455,7 +1461,7 @@ class AN_OT_Bind_Rule(bpy.types.Operator):
     bl_label = 'SaveBindRule'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         global save_new_bind_rule
         save_new_bind_rule = True
 
@@ -1466,7 +1472,7 @@ class AN_OT_BindRuleReset(bpy.types.Operator):
     bl_label = 'ResetBindRule'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         build_default_bind_rule()
 
         return {'FINISHED'}
@@ -1476,7 +1482,7 @@ class AN_OT_SaveIgnoreName(bpy.types.Operator):
     bl_label = 'Save Ignore Name'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         global save_new_ignore_name 
         save_new_ignore_name = True
 
@@ -1487,7 +1493,7 @@ class AN_OT_ClearConstraints(bpy.types.Operator):
     bl_label = 'Clear Constraints'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
         select_mode(bpy.context.active_object,'POSE')
         for bone in bpy.context.active_object.pose.bones:
@@ -1505,7 +1511,7 @@ class AN_OT_SwitchBindRule(bpy.types.Operator):
     bl_label = 'Switch Bind Rule'
     bl_options = {'UNDO'}
 
-    def execute(self, context: 'Context'):
+    def execute(self, context):
         scn = bpy.context.scene
 
         for rule in scn.my_chain_bind_rule_LR:
@@ -1592,7 +1598,7 @@ class RemapPanel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
 
-    def draw(self, context: 'Context'):
+    def draw(self, context):
         scn = bpy.context.scene
         split = self.layout.split(factor=0.3)
         column = split.column()
@@ -1618,7 +1624,7 @@ class OpPanel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
 
-    def draw(self, context: 'Context'):
+    def draw(self, context):
         row = self.layout.row()
         row.operator("clear_ignore_bone.go")
         row.operator("automap_bone_chains.go")
@@ -1641,7 +1647,7 @@ class ChainList_PT(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
 
-    def draw(self, context: 'Context'):
+    def draw(self, context):
         scn = bpy.context.scene
 
         # Armature选择
@@ -1657,7 +1663,9 @@ class ChainList_PT(bpy.types.Panel):
         box = self.layout.box()
         row = box.row()
         row.label(text='Ignore Bone Name Set')
-        row.operator('an.save_ignore_name')
+        row.operator('an.auto_add_ignore')
+        row.operator('an.add_default_ignore')
+        row.operator('an.clear_ignore_bone')
         row = box.row()
         row.prop(scn,'my_ignore_bone_name',text='')
 
@@ -1720,7 +1728,9 @@ class ChainList_PT(bpy.types.Panel):
                 row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_target')
 
 
-classes = [AN_OT_ExportMap,
+classes = [AN_OT_AddDefaultIgnoe,
+           AN_OT_AutoAddIgnoe,
+           AN_OT_ExportMap,
            AN_OT_ImportMap,
            AN_OT_ApplyRestPose,
            AN_OT_CopyRestPose,
@@ -1747,11 +1757,9 @@ classes = [AN_OT_ExportMap,
            BoneChains,
            BoneChainsList,
            myString,
-           clearIgnoreBone,
-        #    RemapPanel,
-        #    BoneChainsPanel,
+           AN_OT_ClearIgnoreBone,
            SaveBoneChainsOP,
-           BuildChains,
+           AN_OT_BuildChains,
            enumAdd,
            EnumBoneCHain]
 

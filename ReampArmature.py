@@ -72,36 +72,58 @@ class ArmatureBoneInfo():
                 if not orginBone.parent or orginBone.parent in self.boneIgnore:
                     self.rootBones.append(orginBone)
 
+        self.rootBones = list(set(self.rootBones))
     bone_chain = [boneIndex] 
     bone_chains = []
 
+    def get_bone_children(self,bone):
+        # if len(bone.children) > 1:
+        #     for child in bone.children:
+        #         pass
+        # else:
+        #     if bone.children[0].name in self.boneIgnoreName:
+        #         temp_bone = self.get_bone_children(bone.children[0])
+        #     return bone.children[0]
+        
+        bone_list = []
+        for child in bone.children:
+            if child.name in self.boneIgnoreName:
+                if self.get_bone_children(child):
+                    bone_list.append(self.get_bone_children(child))
+            else:
+                bone_list.append(child)
+        return bone_list
+
     def findBoneChain(self,chain_layer,bone:bpy.types.PoseBone):
         bone_chain = []
-        bone_chain.append(bone)#将传进的骨头作为链的第一个
-        # print(bone)
-        rBones:list[bpy.types.PoseBone] = bone.children
-        rBoneNeedRevmoe = []
+        # bone_chain.append(bone)#将传进的骨头作为链的第一个
+
         #当下游骨头只有一个合法骨头的时候则添加进去，否则结束
-        while len(rBones):
-            for rbone in rBones:
-                rbone:bpy.types.PoseBone
-                # if rbone.name == 'thigh_twist_01_l':
-                #     pass
-                if rbone.name in self.boneIgnoreName:
-                    rBoneNeedRevmoe.append(rbone)
-            rBones = list(set(rBones)-set(rBoneNeedRevmoe))#真实的常规骨头
-            if len(rBones) == 1:#如果只有一个常规子骨头
-                bone_chain.append(rBones[0])
-            # bone = rBones[0]
-                rBones = rBones[0].children
+        temp_bone = []
+        temp_bone.append(bone)
+        # print(temp_bone)
+
+
+        while True:
+            bone_chain.append(temp_bone[0])#将传进的骨头作为链的第一个
+            temp_bone = self.get_bone_children(temp_bone[0])
+            if len(temp_bone) == 1:#如果只有一个常规子骨头
+                continue
+                # bone_chain.append(temp_bone[0])
+                # if temp_bone[0].children:
+                #     temp_bone = temp_bone[0].children
+                # else:
+                #     bone_chain.append(temp_bone[0])#将传进的骨头作为链的第一个
+                #     break
             else:
                 break
-        self.bone_chains.append({'index':chain_layer,'chain': bone_chain})
-
-        rBones = [{'index':chain_layer+1,"chain":bone} for bone in rBones]
         
-        return rBones
-
+        self.bone_chains.append({'index':chain_layer,'chain': bone_chain})
+        if not temp_bone:
+            return
+        else:
+            return [{'index':chain_layer+1,"chain":bone} for bone in temp_bone]
+        
     def findBoneChains(self):
         self.findRootBones()
 
@@ -116,14 +138,11 @@ class ArmatureBoneInfo():
         bone_chainBraches = []
         while  bone_tracking:
             bone = bone_tracking[0]
-            # for bone in bone_tracking:
-                # if bone.name == 'Neck':
-                #     pass
+          
             bone_chainBraches = self.findBoneChain(bone['index'],bone['chain'])
             boneFinish.append(bone)
-                # if len(bone_chainBraches) == 1:
-                #     break
-            bone_tracking += bone_chainBraches
+            if bone_chainBraches:
+                bone_tracking += bone_chainBraches
             bone_chainBraches = []
             new_bone_tracking = bone_tracking
             for dict1 in bone_tracking:
