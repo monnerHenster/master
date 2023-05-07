@@ -446,7 +446,7 @@ def set_ignore_source(self,value):
         ignore_name = self.source_chain.split(',')[0]
         boneIgnoreName += ','
         boneIgnoreName += ignore_name
-        bpy.ops.build_list.go()
+        bpy.ops.an.build_list()
 
 def get_ignore_source(self):
     return self.enteranl_add_to_ignore_source
@@ -458,7 +458,7 @@ def set_ignore_target(self,value):
         ignore_name = self.name.split(',')[0]
         boneIgnoreName += ','
         boneIgnoreName += ignore_name
-        bpy.ops.build_list.go()
+        bpy.ops.an.build_list()
 
 def get_ignore_target(self):
     return self.enteranl_add_to_ignore_target
@@ -853,7 +853,7 @@ def import_map(file_path):
     scn.my_ignore_bone_name = config['common']['ignore_name']
     global save_new_ignore_name 
     save_new_ignore_name = True
-    bpy.ops.build_list.go()
+    bpy.ops.an.build_list()
 
     for chain in scn.my_chain_map:
         for source_chain in config['chains']:
@@ -928,7 +928,7 @@ def copy_rest_pose(bone_map):
 # class TestStringFunction(bpy.types.PropertyGroup):
 #     test_string:bpy.props.StringProperty(set=None)
 
-class enumAdd(bpy.types.PropertyGroup):
+# class enumAdd(bpy.types.PropertyGroup):
     # @classmethod
     # def register(cls):
     #     bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
@@ -937,7 +937,7 @@ class enumAdd(bpy.types.PropertyGroup):
     # def unregister(cls):
     #     del bpy.types.Scene.enum_Add
 
-    string : bpy.props.StringProperty()
+    # string : bpy.props.StringProperty()
 
 class EnumBoneCHain(bpy.types.PropertyGroup):
     BoneChain:bpy.props.EnumProperty(items=getItem)
@@ -961,10 +961,10 @@ class myString(bpy.types.PropertyGroup):
     string:bpy.props.StringProperty()
 
 class BoneChains(bpy.types.PropertyGroup):
-    isExtraBone:bpy.props.BoolProperty()
-    IsSelected:bpy.props.StringProperty()
+    # isExtraBone:bpy.props.BoolProperty()
+    # IsSelected:bpy.props.StringProperty()
     name: bpy.props.StringProperty()
-    bone_chain:bpy.props.CollectionProperty(type=boneList)
+    # bone_chain:bpy.props.CollectionProperty(type=boneList)
     index:bpy.props.IntProperty()
     is_root:bpy.props.BoolProperty()
 
@@ -982,7 +982,7 @@ class ChainMap(bpy.types.PropertyGroup):
     name:bpy.props.StringProperty(set=set_chain_map_name,get=get_chain_map_name)
     in_name:bpy.props.StringProperty()
     old_name:bpy.props.StringProperty()
-    test:bpy.props.IntProperty()
+    # test:bpy.props.IntProperty()
     
 
 class BonesMap(bpy.types.PropertyGroup):
@@ -1016,24 +1016,12 @@ class AN_OT_BuildChains(bpy.types.Operator):
         global my_target_chains
         my_target_chains = self.targetArmature.bone_chains
 
-        scn.my_enum_bone_chain.clear()
-        for item in scn.my_source_chains.values():
-            scn.my_enum_bone_chain.add()
+        # scn.my_enum_bone_chain.clear()
+        # for item in scn.my_source_chains.values():
+        #     scn.my_enum_bone_chain.add()
         
         return {'FINISHED'}
-
-
-# class SaveBoneChainsOP(bpy.types.Operator):
-#     bl_idname = 'savebonechains.go'
-#     bl_label = 'saveBoneChains'
-    
-#     def execute(self, context):
-#         #add the param to the registered collection
-#         # print(idxNeedRmove)
-#         scn = bpy.context.scene
-#         scn.my_enum_bone_chain.add()
-
-#         return {'FINISHED'}        
+ 
     
 class AN_OT_ClearIgnoreBone(bpy.types.Operator):
     bl_idname = 'an.clear_ignore_bone'
@@ -1198,8 +1186,8 @@ class AN_OT_AddIKBone(bpy.types.Operator):
         return {'FINISHED'}
     
 
-class AutomapBoneChainsOP(bpy.types.Operator):
-    bl_idname = 'automap_bone_chains.go'
+class AN_OT_AutomapBoneChains(bpy.types.Operator):
+    bl_idname = 'an.automap_bone_chains'
     bl_label = 'AutomapBoneChains'
 
     def execute(self, context):
@@ -1213,36 +1201,31 @@ class AutomapBoneChainsOP(bpy.types.Operator):
         toggle_set_chain_map_name = False
         # temp_my_chain_map = [a.name for a in my_target_chains]
         for idx,item in enumerate(scn.my_chain_map):
+            get_same = False
             for item_target in scn.my_target_bone_chains_list[idx].bone_chains:
-                if item.source_chain == item_target.bone_chain:
-                    item.name = item_target.bone_chain
+                if item.source_chain == item_target.name:
+                    item.name = item_target.name
+                    get_same = True
                     break
-                
-            # find_state = False
-            # for item_target in (my_target_chains):
-                # if item.source_chain == ','.join(a.name for a in  item_target['chain']):
-                #     item.name = ','.join(a.name for a in  item_target['chain'])
-                    find_state = True
-                    break
-            # for item_target in scn.my_target_bone_chains_list[idx].bone_chains:
-            # if find_state == False:
-            for rule_body in rule_source_name_body:
-                if item.source_chain.lower().find(rule_body[0]) >= 0 :
-                    for rule_LR in rule_source_name_LR:
-                        if item.source_chain.lower().find(rule_LR[0]) >= 0 :
-                            for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
-                                if (target_name.name.lower().find(rule_body[1]) >=0 or target_name.name.lower().find(rule_body[0]) >=0) and target_name.name.lower().find(rule_LR[1]) >= 0:
+            
+            if not get_same:
+                for rule_body in rule_source_name_body:
+                    if item.source_chain.lower().find(rule_body[0]) >= 0 :
+                        for rule_LR in rule_source_name_LR:
+                            if item.source_chain.lower().find(rule_LR[0]) >= 0 :
+                                for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
+                                    if (target_name.name.lower().find(rule_body[1]) >=0 or target_name.name.lower().find(rule_body[0]) >=0) and target_name.name.lower().find(rule_LR[1]) >= 0:
+                                        item.name = target_name.name
+                                        break
+                                break
+                        for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
+                                if target_name.name.lower().find(rule_body[1]) >=0 or target_name.name.lower().find(rule_body[0]) >=0:
                                     item.name = target_name.name
                                     break
-                            break
-                    for target_name in scn.my_target_bone_chains_list[idx].bone_chains:
-                            if target_name.name.lower().find(rule_body[1]) >=0 or target_name.name.lower().find(rule_body[0]) >=0:
-                                item.name = target_name.name
-                                break
-                    break
+                        break
 
         toggle_update = True
-        recoerd_old_value()
+        # recoerd_old_value()
         toggle_set_chain_map_name = True
 
 
@@ -1267,9 +1250,9 @@ class autoSetChainOP(bpy.types.Operator):
         #         del freeChain[0]
 
         FixChain = []
-        for item in scn.my_enum_bone_chain:
-            if item.IsSelected == True :
-                FixChain.append(item.BoneChain)
+        # for item in scn.my_enum_bone_chain:
+        #     if item.IsSelected == True :
+        #         FixChain.append(item.BoneChain)
                 # targetChain.BoneChain='mixamorig:Hips'
         print(FixChain)
         # map(lambda i: scn.my_target_chains.remove(scn.my_target_chains.find(i)),FixChain)
@@ -1283,8 +1266,8 @@ class autoSetChainOP(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BuildList(bpy.types.Operator):
-    bl_idname = 'build_list.go'
+class AN_OT_BuildList(bpy.types.Operator):
+    bl_idname = 'an.build_list'
     bl_label = 'BuildList'
     bl_options = {'UNDO'}
 
@@ -1325,7 +1308,7 @@ class BuildList(bpy.types.Operator):
         if save_new_bind_rule == False:
             build_default_bind_rule()
 
-        bpy.ops.automap_bone_chains.go()
+        bpy.ops.an.automap_bone_chains()
         select_mode(scn.my_source_rig,'OBJECT')
         return {'FINISHED'}
 
@@ -1336,8 +1319,8 @@ class AN_OT_AutoAddIgnoe(bpy.types.Operator):
 
     def execute(self, context):
         scn = bpy.context.scene
-        scn.my_ignore_bone_name += ','.join(auto_add_ignore(scn.my_source_rig,scn.my_target_rig))
-        scn.my_ignore_bone_name += ','.join(auto_add_ignore(scn.my_target_rig,scn.my_source_rig))
+        scn.my_ignore_bone_name += ','.join(auto_add_ignore(scn.my_source_rig,scn.my_target_rig)) + ','
+        scn.my_ignore_bone_name += ','.join(auto_add_ignore(scn.my_target_rig,scn.my_source_rig)) + ','
         return {'FINISHED'}
 
 class AN_OT_AddDefaultIgnoe(bpy.types.Operator):
@@ -1348,7 +1331,7 @@ class AN_OT_AddDefaultIgnoe(bpy.types.Operator):
     def execute(self, context):
         scn = bpy.context.scene
         global boneIgnoreName
-        scn.my_ignore_bone_name += boneIgnoreName
+        scn.my_ignore_bone_name += boneIgnoreName + ','
         return {'FINISHED'}
 
 class AN_OT_CopyRotation(bpy.types.Operator):
@@ -1427,7 +1410,7 @@ class AN_OT_AlightRestBone(bpy.types.Operator):
         scn.my_target_rig = scn.my_source_rig
         scn.my_source_rig = temp_source_rig
 
-        bpy.ops.build_list.go()
+        bpy.ops.an.build_list()
         build_bones_map()
         bpy.ops.copy_rotation.go()
         select_mode(scn.my_target_rig,'POSE')
@@ -1592,31 +1575,31 @@ class BoneChainsPanel(bpy.types.Panel):
         layout.label(text='targetBoneChains')
         drawBoneChains(self,context,scn.my_target_chains)
 
-class RemapPanel(bpy.types.Panel):
-    """Creates a Panel in the Object properties window"""
-    bl_label = "Remap"
-    bl_category = "AniTool"
-    bl_idname = "HI_PT_Panel4"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
+# class RemapPanel(bpy.types.Panel):
+#     """Creates a Panel in the Object properties window"""
+#     bl_label = "Remap"
+#     bl_category = "AniTool"
+#     bl_idname = "HI_PT_Panel4"
+#     bl_space_type = 'VIEW_3D'
+#     bl_region_type = 'UI'
 
-    def draw(self, context):
-        scn = bpy.context.scene
-        split = self.layout.split(factor=0.3)
-        column = split.column()
-        column.label(text = 'SourceChain')
-        for item in scn.my_source_chains:
-            row = column.row()
-            row.label(text=item.name)
+#     def draw(self, context):
+#         scn = bpy.context.scene
+#         split = self.layout.split(factor=0.3)
+#         column = split.column()
+#         column.label(text = 'SourceChain')
+#         for item in scn.my_source_chains:
+#             row = column.row()
+#             row.label(text=item.name)
 
-        split = split.split(factor=1)
-        column = split.column()
-        column.label(text = 'TargetChain')
-        for idx,item in enumerate(scn.my_source_chains):
-            row=column.row()
-            row.alignment = 'LEFT'
-            row.prop(scn.my_enum_bone_chain[idx],'IsSelected')
-            row.prop(scn.my_enum_bone_chain.values()[idx],'BoneChain',text='')
+#         split = split.split(factor=1)
+#         column = split.column()
+#         column.label(text = 'TargetChain')
+#         for idx,item in enumerate(scn.my_source_chains):
+#             row=column.row()
+#             row.alignment = 'LEFT'
+#             row.prop(scn.my_enum_bone_chain[idx],'IsSelected')
+#             row.prop(scn.my_enum_bone_chain.values()[idx],'BoneChain',text='')
 
 class AN_OP_Panel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -1628,11 +1611,11 @@ class AN_OP_Panel(bpy.types.Panel):
 
     def draw(self, context):
         row = self.layout.row()
-        row.operator("automap_bone_chains.go")
+        row.operator("an.automap_bone_chains")
         row = self.layout.row()
         row.operator("an.alight_rest_bone")
         row.operator("auto_set_chain.go")
-        row.operator("build_list.go")
+        row.operator("an.build_list")
         row.operator("copy_rotation.go")
         row = self.layout.row()
         row.operator("an.clear_constraints")
@@ -1750,9 +1733,9 @@ classes = [AN_OT_AddDefaultIgnoe,
            AN_OT_CopyRotation,
            ChainMap,
            ChainList_PT,
-           BuildList,
+           AN_OT_BuildList,
            autoSetChainOP,
-           AutomapBoneChainsOP,
+           AN_OT_AutomapBoneChains,
            myBone,
            boneList,
            BoneChains,
@@ -1761,7 +1744,7 @@ classes = [AN_OT_AddDefaultIgnoe,
            AN_OT_ClearIgnoreBone,
         #    SaveBoneChainsOP,
            AN_OT_BuildChains,
-           enumAdd,
+        #    enumAdd,
            EnumBoneCHain]
 
 
@@ -1771,7 +1754,7 @@ def register():
 
     bpy.types.Scene.my_copy_rest_pose_rule = bpy.props.EnumProperty(items=(('U2U','Unreal to Unreal','Unreal to Unreal'),('U2M','Unreal to Mixamo','Unreal to Mixamo')))
     bpy.types.Scene.my_test_string = bpy.props.StringProperty(update=update_string)
-    bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
+    # bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
     bpy.types.Scene.my_sourceBoneChain = bpy.props.CollectionProperty(type=boneList)
     bpy.types.Scene.my_source_chains = bpy.props.CollectionProperty(type=BoneChains)
     bpy.types.Scene.my_target_bone_chains_list = bpy.props.CollectionProperty(type=BoneChainsList)
@@ -1779,7 +1762,7 @@ def register():
     bpy.types.Scene.my_target_chains = bpy.props.CollectionProperty(type=BoneChains)
     bpy.types.Scene.my_target_chainsRig = bpy.props.CollectionProperty(type=BoneChainsList)
     bpy.types.Scene.my_ignore_bone_name = bpy.props.StringProperty()
-    bpy.types.Scene.my_enum_bone_chain = bpy.props.CollectionProperty(type=EnumBoneCHain)
+    # bpy.types.Scene.my_enum_bone_chain = bpy.props.CollectionProperty(type=EnumBoneCHain)
     bpy.types.Scene.my_chain_map = bpy.props.CollectionProperty(type=ChainMap)
     bpy.types.Scene.my_bones_map = bpy.props.CollectionProperty(type=BonesMap)
     bpy.types.Scene.my_chain_map_index = bpy.props.IntProperty()
@@ -1801,7 +1784,7 @@ def unregister():
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.my_copy_rest_pose_rule
     del bpy.types.Scene.my_test_string
-    del bpy.types.Scene.enum_Add
+    # del bpy.types.Scene.enum_Add
     del bpy.types.Scene.my_source_chains
     del bpy.types.Scene.my_target_bone_chains_list
     del bpy.types.Scene.my_sourceBoneChain
@@ -1809,7 +1792,7 @@ def unregister():
     del bpy.types.Scene.my_target_chainsRig
     del bpy.types.Scene.my_targetBoneChain
     del bpy.types.Scene.my_ignore_bone_name
-    del bpy.types.Scene.my_enum_bone_chain
+    # del bpy.types.Scene.my_enum_bone_chain
     del bpy.types.Scene.color_set_panel
     del bpy.types.Scene.color_set_text
     del bpy.types.Scene.my_chain_map

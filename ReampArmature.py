@@ -77,13 +77,6 @@ class ArmatureBoneInfo():
     bone_chains = []
 
     def get_bone_children(self,bone):
-        # if len(bone.children) > 1:
-        #     for child in bone.children:
-        #         pass
-        # else:
-        #     if bone.children[0].name in self.boneIgnoreName:
-        #         temp_bone = self.get_bone_children(bone.children[0])
-        #     return bone.children[0]
         
         bone_list = []
         for child in bone.children:
@@ -106,15 +99,12 @@ class ArmatureBoneInfo():
 
         while True:
             bone_chain.append(temp_bone[0])#将传进的骨头作为链的第一个
+            # print(temp_bone[0])
+            # if temp_bone[0].name == 'head':
+            #     i = 1
             temp_bone = self.get_bone_children(temp_bone[0])
             if len(temp_bone) == 1:#如果只有一个常规子骨头
                 continue
-                # bone_chain.append(temp_bone[0])
-                # if temp_bone[0].children:
-                #     temp_bone = temp_bone[0].children
-                # else:
-                #     bone_chain.append(temp_bone[0])#将传进的骨头作为链的第一个
-                #     break
             else:
                 break
         
