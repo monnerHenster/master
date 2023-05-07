@@ -925,8 +925,8 @@ def copy_rest_pose(bone_map):
             )
             pb1.matrix = m @ pb1.matrix
 
-class TestStringFunction(bpy.types.PropertyGroup):
-    test_string:bpy.props.StringProperty(set=None)
+# class TestStringFunction(bpy.types.PropertyGroup):
+#     test_string:bpy.props.StringProperty(set=None)
 
 class enumAdd(bpy.types.PropertyGroup):
     # @classmethod
@@ -1023,17 +1023,17 @@ class AN_OT_BuildChains(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class SaveBoneChainsOP(bpy.types.Operator):
-    bl_idname = 'savebonechains.go'
-    bl_label = 'saveBoneChains'
+# class SaveBoneChainsOP(bpy.types.Operator):
+#     bl_idname = 'savebonechains.go'
+#     bl_label = 'saveBoneChains'
     
-    def execute(self, context):
-        #add the param to the registered collection
-        # print(idxNeedRmove)
-        scn = bpy.context.scene
-        scn.my_enum_bone_chain.add()
+#     def execute(self, context):
+#         #add the param to the registered collection
+#         # print(idxNeedRmove)
+#         scn = bpy.context.scene
+#         scn.my_enum_bone_chain.add()
 
-        return {'FINISHED'}        
+#         return {'FINISHED'}        
     
 class AN_OT_ClearIgnoreBone(bpy.types.Operator):
     bl_idname = 'an.clear_ignore_bone'
@@ -1298,11 +1298,13 @@ class BuildList(bpy.types.Operator):
         scn.my_chain_map.clear()
 
         # 从python骨骼链列表转化为blender的UI使用的列表
+        root_has_set = False
         for bone_chain,target_chain in zip(my_source_chains,my_target_chains):
             item = scn.my_chain_map.add()
             item.index = bone_chain['index']
-            if item.index == 0 :
+            if item.index == 0 and not root_has_set:
                 item.is_root = True
+                root_has_set = True
             source_chain = ','.join([a.name for a in bone_chain['chain']])
             item.source_chain = source_chain
             target_chain = ','.join([a.name for a in target_chain['chain']])
@@ -1616,7 +1618,7 @@ class RemapPanel(bpy.types.Panel):
             row.prop(scn.my_enum_bone_chain[idx],'IsSelected')
             row.prop(scn.my_enum_bone_chain.values()[idx],'BoneChain',text='')
 
-class OpPanel(bpy.types.Panel):
+class AN_OP_Panel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "Operator"
     bl_category = "AniTool"
@@ -1626,7 +1628,6 @@ class OpPanel(bpy.types.Panel):
 
     def draw(self, context):
         row = self.layout.row()
-        row.operator("clear_ignore_bone.go")
         row.operator("automap_bone_chains.go")
         row = self.layout.row()
         row.operator("an.alight_rest_bone")
@@ -1742,8 +1743,8 @@ classes = [AN_OT_AddDefaultIgnoe,
            AN_OT_Bind_Rule,
            AN_OT_AlightRestBone,
            AN_PGT_ChainBindRule,
-           TestStringFunction,
-           OpPanel,
+        #    TestStringFunction,
+           AN_OP_Panel,
            ARP_UL_items,
            BonesMap,
            AN_OT_CopyRotation,
@@ -1758,7 +1759,7 @@ classes = [AN_OT_AddDefaultIgnoe,
            BoneChainsList,
            myString,
            AN_OT_ClearIgnoreBone,
-           SaveBoneChainsOP,
+        #    SaveBoneChainsOP,
            AN_OT_BuildChains,
            enumAdd,
            EnumBoneCHain]
