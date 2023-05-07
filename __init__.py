@@ -444,8 +444,8 @@ def set_ignore_source(self,value):
     self.enteranl_add_to_ignore_source = value
     if value:
         ignore_name = self.source_chain.split(',')[0]
-        boneIgnoreName += ','
         boneIgnoreName += ignore_name
+        boneIgnoreName += ','
         bpy.ops.an.build_list()
 
 def get_ignore_source(self):
@@ -456,13 +456,29 @@ def set_ignore_target(self,value):
     self.enteranl_add_to_ignore_target = value
     if value:
         ignore_name = self.name.split(',')[0]
-        boneIgnoreName += ','
         boneIgnoreName += ignore_name
+        boneIgnoreName += ','
         bpy.ops.an.build_list()
 
 def get_ignore_target(self):
     return self.enteranl_add_to_ignore_target
 
+def set_ignore_bool(self,value):
+    scn = bpy.context.scene
+    self.in_is_ignore = value
+    list = scn.my_ignore_bone_name.split(',')
+    if value:
+        if self.name not in list:
+            list.append(self.name)
+    else:
+        if self.name in list:
+            list.remove(self.name)
+    scn.my_ignore_bone_name = ','.join([a for a in list if a != '']) 
+
+
+
+def get_ignore_bool(self):
+    return self.in_is_ignore
 
 def recoerd_old_value():
     scn = bpy.context.scene
@@ -482,6 +498,23 @@ def set_chain_map_name(self,value):
                 item.name = self.name
         toggle_set_chain_map_name = True    
     self.in_name = value
+    self.target_bones.clear()
+    for bone in value.split(','):
+        item = self.target_bones.add()
+        item.name = bone
+
+
+def set_source_chain(self,value):
+    self.in_source_chain = value
+    self.source_bones.clear()
+    for bone in value.split(','):
+        item = self.source_bones.add()
+        item.name = bone
+
+
+def get_source_chain(self):
+    return self.in_source_chain
+
 
 def filter_name():
     scn = bpy.context.scene
@@ -948,8 +981,8 @@ class EnumBoneCHain(bpy.types.PropertyGroup):
 
 # bpy.context.scene.globalvalue = 3
 
-class myBone(bpy.types.PropertyGroup):
-    bone:bpy.props.PointerProperty(type=bpy.types.Action)
+# class myBone(bpy.types.PropertyGroup):
+#     bone:bpy.props.PointerProperty(type=bpy.types.Action)
 
 
 class boneList(bpy.types.PropertyGroup):
@@ -957,8 +990,12 @@ class boneList(bpy.types.PropertyGroup):
     index:bpy.props.IntProperty()
     name:bpy.props.StringProperty()
 
-class myString(bpy.types.PropertyGroup):
-    string:bpy.props.StringProperty()
+class AN_PROP_BoneIgnore(bpy.types.PropertyGroup):
+    is_ignore:bpy.props.BoolProperty(get=get_ignore_bool,set=set_ignore_bool)
+    in_is_ignore:bpy.props.BoolProperty()
+
+# class myString(bpy.types.PropertyGroup):
+#     string:bpy.props.StringProperty()
 
 class BoneChains(bpy.types.PropertyGroup):
     # isExtraBone:bpy.props.BoolProperty()
@@ -971,14 +1008,17 @@ class BoneChains(bpy.types.PropertyGroup):
 class BoneChainsList(bpy.types.PropertyGroup):
     bone_chains: bpy.props.CollectionProperty(type=BoneChains)
 
-class ChainMap(bpy.types.PropertyGroup):
+class AN_PROP_ChainMap(bpy.types.PropertyGroup):
     is_root:bpy.props.BoolProperty()
     add_to_ignore_source:bpy.props.BoolProperty(set=set_ignore_source,get=get_ignore_source)
     enteranl_add_to_ignore_source:bpy.props.BoolProperty()
     add_to_ignore_target:bpy.props.BoolProperty(set=set_ignore_target,get=get_ignore_target)
     enteranl_add_to_ignore_target:bpy.props.BoolProperty()
     index:bpy.props.IntProperty()
-    source_chain: bpy.props.StringProperty()
+    source_chain: bpy.props.StringProperty(set=set_source_chain,get=get_source_chain)
+    in_source_chain: bpy.props.StringProperty()
+    source_bones: bpy.props.CollectionProperty(type=AN_PROP_BoneIgnore)
+    target_bones: bpy.props.CollectionProperty(type=AN_PROP_BoneIgnore)
     name:bpy.props.StringProperty(set=set_chain_map_name,get=get_chain_map_name)
     in_name:bpy.props.StringProperty()
     old_name:bpy.props.StringProperty()
@@ -1623,7 +1663,7 @@ class AN_OP_Panel(bpy.types.Panel):
         row.operator("an.copy_rest_pose")
         row.operator("an.apply_rest_pose")
 
-class ChainList_PT(bpy.types.Panel):
+class AN_PT_ChainList(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "ChainList"
     bl_category = "AniTool"
@@ -1708,11 +1748,26 @@ class ChainList_PT(bpy.types.Panel):
                 row.prop_search(scn.my_chain_map[scn.my_chain_map_index],'name',scn.my_target_bone_chains_list[scn.my_chain_map_index],'bone_chains',text='')
                 row = box.row(align=True)
                 row.prop(scn.my_chain_map[scn.my_chain_map_index],'is_root')
-                row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_source')
-                row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_target')
+                # row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_source')
+                # row.prop(scn.my_chain_map[scn.my_chain_map_index],'add_to_ignore_target')
+                split = box.split(factor=0.5)
+                col = split.column()
+                if len(scn.my_chain_map[scn.my_chain_map_index].source_bones):
+                    for bone in scn.my_chain_map[scn.my_chain_map_index].source_bones:
+                        row = col.row(align=True)
+                        row.prop(bone,'is_ignore',text='')
+                        row.label(text=bone.name)
+                split = split.split(factor=1)
+                col = split.column()
+                if len(scn.my_chain_map[scn.my_chain_map_index].target_bones):
+                    for bone in scn.my_chain_map[scn.my_chain_map_index].target_bones:
+                        row = col.row(align=True)
+                        row.prop(bone,'is_ignore',text='')
+                        row.label(text=bone.name)
 
 
-classes = [AN_OT_AddDefaultIgnoe,
+classes = [AN_PROP_BoneIgnore,
+           AN_OT_AddDefaultIgnoe,
            AN_OT_AutoAddIgnoe,
            AN_OT_ExportMap,
            AN_OT_ImportMap,
@@ -1731,16 +1786,16 @@ classes = [AN_OT_AddDefaultIgnoe,
            ARP_UL_items,
            BonesMap,
            AN_OT_CopyRotation,
-           ChainMap,
-           ChainList_PT,
+           AN_PROP_ChainMap,
+           AN_PT_ChainList,
            AN_OT_BuildList,
            autoSetChainOP,
            AN_OT_AutomapBoneChains,
-           myBone,
+        #    myBone,
            boneList,
            BoneChains,
            BoneChainsList,
-           myString,
+        #    myString,
            AN_OT_ClearIgnoreBone,
         #    SaveBoneChainsOP,
            AN_OT_BuildChains,
@@ -1763,7 +1818,7 @@ def register():
     bpy.types.Scene.my_target_chainsRig = bpy.props.CollectionProperty(type=BoneChainsList)
     bpy.types.Scene.my_ignore_bone_name = bpy.props.StringProperty()
     # bpy.types.Scene.my_enum_bone_chain = bpy.props.CollectionProperty(type=EnumBoneCHain)
-    bpy.types.Scene.my_chain_map = bpy.props.CollectionProperty(type=ChainMap)
+    bpy.types.Scene.my_chain_map = bpy.props.CollectionProperty(type=AN_PROP_ChainMap)
     bpy.types.Scene.my_bones_map = bpy.props.CollectionProperty(type=BonesMap)
     bpy.types.Scene.my_chain_map_index = bpy.props.IntProperty()
     bpy.types.Scene.an_bind_rule_expand_ui = bpy.props.BoolProperty()
