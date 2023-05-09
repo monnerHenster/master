@@ -66,15 +66,24 @@ class ArmatureBoneInfo():
         return False
 
     def findRootBones(self):
-        # self.rootBones = [boneIndex]
+        self.rootBones = []
         for orginBone in self.armature.pose.bones:
-            if orginBone not in self.boneIgnore and not self.check_helper_bones(orginBone):
-                if not orginBone.parent or orginBone.parent in self.boneIgnore:
-                    self.rootBones.append(orginBone)
+            if not orginBone.parent:
+                self.rootBones.append(orginBone)
 
-        self.rootBones = list(set(self.rootBones))
     bone_chain = [boneIndex] 
     bone_chains = []
+
+    def get_root_bones(self,bones):
+        root_bones = []
+        for bone in bones:
+            if bone in self.boneIgnoreName:
+                for bone2 in self.get_root_bones(bone.children):
+                    root_bones.append(bone2)
+            else:
+                root_bones.append(bone)
+        return root_bones
+
 
     def get_bone_children(self,bone):
         
@@ -105,6 +114,7 @@ class ArmatureBoneInfo():
             temp_bone = self.get_bone_children(temp_bone[0])
             if len(temp_bone) == 1:#如果只有一个常规子骨头
                 continue
+
             else:
                 break
         
