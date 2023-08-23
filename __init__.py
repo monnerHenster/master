@@ -1155,6 +1155,15 @@ class AN_OT_ImportMap(bpy.types.Operator):
         self.filepath = 'remap_preset.toml'
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
+    
+class AN_OT_SetActionRange(bpy.types.Operator):
+    bl_idname = 'an.set_action_range'
+    bl_label = 'Set Action Range'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        bpy.context.scene.frame_end = int(bpy.context.selected_objects[0].animation_data.action.frame_range[1])
+        return {'FINISHED'}
 
 class AN_OT_ExportMap(bpy.types.Operator):
     bl_idname = 'an.export_map'
@@ -1662,6 +1671,8 @@ class AN_OP_Panel(bpy.types.Panel):
         row.operator("an.add_ikbone")
         row.operator("an.copy_rest_pose")
         row.operator("an.apply_rest_pose")
+        row = self.layout.row()
+        row.operator("an.set_action_range")
 
 class AN_PT_ChainList(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -1800,7 +1811,8 @@ classes = [AN_PROP_BoneIgnore,
         #    SaveBoneChainsOP,
            AN_OT_BuildChains,
         #    enumAdd,
-           EnumBoneCHain]
+           EnumBoneCHain,
+           AN_OT_SetActionRange]
 
 
 def register():
@@ -1826,9 +1838,6 @@ def register():
     bpy.types.Scene.my_chain_bind_rule_body = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_source_rig = bpy.props.PointerProperty(type=bpy.types.Object)
     bpy.types.Scene.my_target_rig = bpy.props.PointerProperty(type=bpy.types.Object)
-    bpy.types.Scene.color_set_panel = bpy.props.FloatVectorProperty(name="Color Panel", subtype="COLOR_GAMMA",
-                                                                    default=(0.2, 0.2, 0.2), min=0.0, max=1.0,
-                                                                    description="Back picker panel color")
     bpy.types.Scene.color_set_text = bpy.props.FloatVectorProperty(name="Color Text", subtype="COLOR_GAMMA",
                                                                    default=(0.887, 0.887, 0.887), min=0.0, max=1.0,
                                                                    description="Text color in the picker panel")
@@ -1848,7 +1857,6 @@ def unregister():
     del bpy.types.Scene.my_targetBoneChain
     del bpy.types.Scene.my_ignore_bone_name
     # del bpy.types.Scene.my_enum_bone_chain
-    del bpy.types.Scene.color_set_panel
     del bpy.types.Scene.color_set_text
     del bpy.types.Scene.my_chain_map
     del bpy.types.Scene.my_source_rig
