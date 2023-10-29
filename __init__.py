@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+import time
 import random
 from .ReampArmature import *
 import math
@@ -36,17 +37,41 @@ bl_info = {
 my_source_chains = []
 my_target_chains = []
 toggle_update = True
+Toggle_IK_State = True
 toggle_set_chain_map_name = True
 save_new_bind_rule = False
 save_new_ignore_name = False
 boneIgnoreName = 'lowerarm_r_IK,calf_r_IK,lowerarm_l_IK,calf_l_IK,thigh_twist_01_l,calf_twist_01_r,calf_twist_01_l,thigh_twist_01_r,upperarm_twist_01_l,upperarm_twist_01_r,lowerarm_twist_01_l,lowerarm_twist_01_r,ik_hand_root,ik_hand_r,ik_foot_root,ik_foot_r,ik_foot_l'
-ik_bone = 'lowerarm_r,calf_r,lowerarm_l,calf_l'
+
+ik_bones = [
+    {'name':'hand_r','pole':180,'pole_loc':Vector((0,20,0)),'head_tail':1,'chain':3},
+    {'name':'hand_l','pole':0,'pole_loc':Vector((0,20,0)),'head_tail':1,'chain':3},
+    {'name':'foot_r','pole':0,'pole_loc':Vector((0,-20,0)),'head_tail':0,'chain':2},
+    {'name':'foot_l','pole':180,'pole_loc':Vector((0,-20,0)),'head_tail':0,'chain':2}
+]
 
 default_rule_source_name_LR = ['_l','_r']
 default_rule_target_name_LR = ['Left','Right']
 default_rule_source_name_body = ['index','middle','pinky','ring','thumb','thigh','clavicle','neck']
 default_rule_target_name_body = ['Index','Middle','Pinky','Ring','Thumb','UpLeg','Shoulder','Neck']
 
+reg_button = [
+    "an.automap_bone_chains",
+    "an.alight_rest_bone",
+    "auto_set_chain.go",
+    "an.build_list",
+    "copy_rotation.go",
+    "an.clear_constraints",
+    "an.copy_rest_pose",
+    "an.apply_rest_pose",
+    "an.set_action_range",
+]
+
+ik_button = [
+    "an.add_ikbone",
+    "an.add_temp_ikbone",
+    "an.toggle_ik"
+]
 
 def set_bone_chain(self,context,BoneChains,scnBoneChains):
         scnBoneChains.clear()
@@ -216,10 +241,6 @@ def build_bones_map():
                     item.is_root = True
             # except Exception:
             #     print("error bone",bone_item.name)
-
-    # for item_bone in scn.my_bones_map:
-
-    #     print(item_bone.source_bone,item_bone.name)
 
 def build_bone_tweak(self,context,scn_source_chains,scn_source_rig):
     scn = bpy.context.scene
@@ -906,7 +927,6 @@ def root_motion():
         if fc.data_path == 'location':
             scn.my_target_rig.keyframe_insert(data_path=fc.data_path, index=fc.array_index, group=scn.my_target_rig.data.name,frame=0)
             target_fc = scn.my_target_rig.animation_data.action.fcurves.find(fc.data_path,index=fc.array_index)
-            # print(target_fc.data_path)
             for kp in fc.keyframe_points:
                 scn.my_target_rig.keyframe_insert(data_path=fc.data_path, index=fc.array_index, group=scn.my_target_rig.data.name,frame=kp.co[0])
                 target_kp = target_fc.keyframe_points[-1]
@@ -958,31 +978,13 @@ def copy_rest_pose(bone_map):
             )
             pb1.matrix = m @ pb1.matrix
 
-# class TestStringFunction(bpy.types.PropertyGroup):
-#     test_string:bpy.props.StringProperty(set=None)
-
-# class enumAdd(bpy.types.PropertyGroup):
-    # @classmethod
-    # def register(cls):
-    #     bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
-
-    # @classmethod
-    # def unregister(cls):
-    #     del bpy.types.Scene.enum_Add
-
-    # string : bpy.props.StringProperty()
 
 class EnumBoneCHain(bpy.types.PropertyGroup):
     BoneChain:bpy.props.EnumProperty(items=getItem)
     IsSelected:bpy.props.BoolProperty()
     # BoneChain:bpy.props.EnumProperty(items=getItem,get=get_enum, set=set_enum)
 
-#define what the property in the colection will look like
 
-# bpy.context.scene.globalvalue = 3
-
-# class myBone(bpy.types.PropertyGroup):
-#     bone:bpy.props.PointerProperty(type=bpy.types.Action)
 
 
 class boneList(bpy.types.PropertyGroup):
@@ -994,8 +996,7 @@ class AN_PROP_BoneIgnore(bpy.types.PropertyGroup):
     is_ignore:bpy.props.BoolProperty(get=get_ignore_bool,set=set_ignore_bool)
     in_is_ignore:bpy.props.BoolProperty()
 
-# class myString(bpy.types.PropertyGroup):
-#     string:bpy.props.StringProperty()
+
 
 class BoneChains(bpy.types.PropertyGroup):
     # isExtraBone:bpy.props.BoolProperty()
@@ -1205,11 +1206,28 @@ class AN_OT_AddIKBone(bpy.types.Operator):
             bone_IK.tail = bone_IK.head[:]
             bone_IK.tail[1] += 20
 
+            bone_IK_Pole = create_edit_bone(bone+'_IK_Pole')
+            bone_IK_Pole.parnet = bone_IK
+            bone_foot = bpy.context.object.data.edit_bones.get(bone)
+            bone_IK_Pole.head = bone_foot.head
+            bone_IK_Pole.tail = bone_IK_Pole.head[:]
+            if bone.find('_l'):
+                move_way = 20
+            else:
+                move_way = -20
+            bone_IK_Pole.tail[1] += move_way
+
         bpy.context.view_layer.update()        
         select_mode(scn.my_source_rig,'POSE')
         for bone in ik_bone_list:
             bone_IK = scn.my_source_rig.pose.bones.get(bone+'_IK')
             cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
+            cst.target = scn.my_source_rig
+            cst.head_tail = 1
+            cst.subtarget = bone
+
+            bone_IK_Pole = scn.my_source_rig.pose.bones.get(bone+'_IK_Pole')
+            cst = create_constraint(scn.my_source_rig,bone_IK_Pole.name,'Copy Transform IK','COPY_LOCATION')
             cst.target = scn.my_source_rig
             cst.head_tail = 1
             cst.subtarget = bone
@@ -1229,12 +1247,88 @@ class AN_OT_AddIKBone(bpy.types.Operator):
             cst = create_constraint(scn.my_source_rig,bone,'IK_Anitool','IK')
             cst.target = scn.my_source_rig
             cst.subtarget = bone+'_IK'
-            cst.chain_count = 2
+            cst.chain_count = 2 
+            cst.pole_target = scn.my_source_rig
+            cst.pole_subtarget = bone+'_IK_Pole'
 
         select_mode(scn.my_source_rig,'OBJECT')
         return {'FINISHED'}
     
+class AN_OT_AddTempIKBone(bpy.types.Operator):
+    bl_idname = 'an.add_temp_ikbone'
+    bl_label = 'Add Temp IKBone'
+    bl_options = {'UNDO'}
 
+    def execute(self, context):
+        scn = bpy.context.scene
+        build_bones_map()
+
+        global ik_bones
+        select_mode(scn.my_source_rig,'EDIT')
+        for bone in ik_bones:
+            bone_IK = create_edit_bone(bone['name']+'_IK')
+            bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
+            bone_IK.head = bone_target.tail
+            bone_IK.tail = bone_IK.head[:]
+            bone_IK.tail[1] += 20
+
+            bone_IK_Pole = create_edit_bone(bone['name']+'_IK_Pole')
+            bone_IK_Pole.parent = bone_IK
+            bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
+            bone_IK_Pole.head = bone_target.head
+            bone_IK_Pole.tail = bone_IK_Pole.head[:]
+            bone_IK_Pole.tail[1] += 20
+
+        select_mode(scn.my_source_rig,'POSE')
+        for bone in ik_bones:
+            bone_IK = scn.my_source_rig.pose.bones.get(bone['name']+'_IK')
+            cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
+            cst.target = scn.my_source_rig
+            cst.head_tail =bone['head_tail']
+            cst.subtarget = bone['name']
+            bpy.context.object.data.bones.active = bone_IK.bone
+            bone_IK.bone.select = True
+            bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
+        
+            bone_IK_Pole = scn.my_source_rig.pose.bones.get(bone['name']+'_IK_Pole')
+            cst = create_constraint(scn.my_source_rig,bone_IK_Pole.name,'Copy Transform IK','COPY_LOCATION')
+            cst.target = scn.my_source_rig
+            cst.head_tail = 0
+            cst.subtarget = bone['name']
+            bpy.context.object.data.bones.active = bone_IK_Pole.bone
+            bone_IK_Pole.bone.select = True
+            bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
+            bone_IK_Pole.location += bone['pole_loc']
+
+        select_mode(scn.my_source_rig,'POSE')
+        for bone in ik_bones:
+            cst = create_constraint(scn.my_source_rig,bone['name'],'IK_Anitool','IK')
+            cst.target = scn.my_source_rig
+            cst.subtarget = bone['name']+'_IK'
+            cst.chain_count = bone['chain'] 
+            cst.pole_target = scn.my_source_rig
+            cst.pole_subtarget = bone['name']+'_IK_Pole'
+            cst.pole_angle = bone['pole']
+
+            # if bone['name'].find('_l') >= 0:
+            #     cst.pole_angle = 180
+            # else:
+            #     cst.pole_angle = 0
+
+        select_mode(scn.my_source_rig,'EDIT')
+        for bone in ik_bones:
+            bone_IK = create_edit_bone(bone['name']+'_IK')
+            set_bone_layer(bone_IK, 1)
+            bone_IK = create_edit_bone(bone['name']+'_IK_Pole')
+            set_bone_layer(bone_IK, 1)
+
+        
+        bpy.context.object.data.layers[1] = True
+        select_mode(scn.my_source_rig,'POSE')
+
+
+        return {'FINISHED'}
+    
 class AN_OT_AutomapBoneChains(bpy.types.Operator):
     bl_idname = 'an.automap_bone_chains'
     bl_label = 'AutomapBoneChains'
@@ -1406,15 +1500,15 @@ class AN_OT_CopyRotation(bpy.types.Operator):
             if fc.group.name == scn.my_source_rig.data.name:
                 fc.mute = True
 
-        bpy.ops.nla.bake(
-        frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
-        frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
-        step=1,
-        only_selected=True,
-        visual_keying=True,
-        clear_constraints = True,
-        bake_types={'POSE'}
-        )
+        # bpy.ops.nla.bake(
+        # frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
+        # frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
+        # step=1,
+        # only_selected=True,
+        # visual_keying=True,
+        # clear_constraints = True,
+        # bake_types={'POSE'}
+        # )
 
         fcruves = scn.my_source_rig.animation_data.action.fcurves
         for fc in fcruves:
@@ -1490,6 +1584,25 @@ class AN_OT_AlightRestBone(bpy.types.Operator):
 
         return {'FINISHED'}
     
+class AN_OT_ToggleIK(bpy.types.Operator):
+    bl_idname = 'an.toggle_ik'
+    bl_label = 'Toggle IK'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        global Toggle_IK_State
+        scn = bpy.context.scene
+        select_mode(scn.my_source_rig,'POSE')
+        for bone in scn.my_source_rig.pose.bones:
+            for csts in bone.constraints:
+                if csts.name == 'IK_Anitool':
+                    if csts.enabled == True:
+                        csts.enabled = Toggle_IK_State = False
+                    else:
+                        csts.enabled = Toggle_IK_State = True
+
+        return {'FINISHED'}
+
 class AN_OT_Bind_Rule(bpy.types.Operator):
     bl_idname = 'an.save_bind_rule'
     bl_label = 'SaveBindRule'
@@ -1624,31 +1737,7 @@ class BoneChainsPanel(bpy.types.Panel):
         layout.label(text='targetBoneChains')
         drawBoneChains(self,context,scn.my_target_chains)
 
-# class RemapPanel(bpy.types.Panel):
-#     """Creates a Panel in the Object properties window"""
-#     bl_label = "Remap"
-#     bl_category = "AniTool"
-#     bl_idname = "HI_PT_Panel4"
-#     bl_space_type = 'VIEW_3D'
-#     bl_region_type = 'UI'
 
-#     def draw(self, context):
-#         scn = bpy.context.scene
-#         split = self.layout.split(factor=0.3)
-#         column = split.column()
-#         column.label(text = 'SourceChain')
-#         for item in scn.my_source_chains:
-#             row = column.row()
-#             row.label(text=item.name)
-
-#         split = split.split(factor=1)
-#         column = split.column()
-#         column.label(text = 'TargetChain')
-#         for idx,item in enumerate(scn.my_source_chains):
-#             row=column.row()
-#             row.alignment = 'LEFT'
-#             row.prop(scn.my_enum_bone_chain[idx],'IsSelected')
-#             row.prop(scn.my_enum_bone_chain.values()[idx],'BoneChain',text='')
 
 class AN_OP_Panel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -1659,20 +1748,24 @@ class AN_OP_Panel(bpy.types.Panel):
     bl_region_type = 'UI'
 
     def draw(self, context):
-        row = self.layout.row()
-        row.operator("an.automap_bone_chains")
-        row = self.layout.row()
-        row.operator("an.alight_rest_bone")
-        row.operator("auto_set_chain.go")
-        row.operator("an.build_list")
-        row.operator("copy_rotation.go")
-        row = self.layout.row()
-        row.operator("an.clear_constraints")
-        row.operator("an.add_ikbone")
-        row.operator("an.copy_rest_pose")
-        row.operator("an.apply_rest_pose")
-        row = self.layout.row()
-        row.operator("an.set_action_range")
+        for index,button in enumerate(reg_button):
+            if index >= 0 and index%2 == 0:
+                row = self.layout.row()
+            row.operator(button)
+
+class AN_OP_PanelIK(bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "IK Operator"
+    bl_category = "AniTool"
+    bl_idname = "ik_operator"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+
+    def draw(self, context):
+        for index,button in enumerate(ik_button):
+            if index >= 0 and index%2 == 0:
+                row = self.layout.row()
+            row.operator(button)
 
 class AN_PT_ChainList(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -1786,14 +1879,16 @@ classes = [AN_PROP_BoneIgnore,
            AN_OT_CopyRestPose,
            AN_OT_SwitchBindRule,
            AN_OT_AddIKBone,
+           AN_OT_AddTempIKBone,
            AN_OT_ClearConstraints,
            AN_OT_SaveIgnoreName,
            AN_OT_BindRuleReset,
            AN_OT_Bind_Rule,
            AN_OT_AlightRestBone,
+           AN_OT_ToggleIK,
            AN_PGT_ChainBindRule,
-        #    TestStringFunction,
            AN_OP_Panel,
+           AN_OP_PanelIK,
            ARP_UL_items,
            BonesMap,
            AN_OT_CopyRotation,
@@ -1802,15 +1897,11 @@ classes = [AN_PROP_BoneIgnore,
            AN_OT_BuildList,
            autoSetChainOP,
            AN_OT_AutomapBoneChains,
-        #    myBone,
            boneList,
            BoneChains,
            BoneChainsList,
-        #    myString,
            AN_OT_ClearIgnoreBone,
-        #    SaveBoneChainsOP,
            AN_OT_BuildChains,
-        #    enumAdd,
            EnumBoneCHain,
            AN_OT_SetActionRange]
 
@@ -1821,7 +1912,6 @@ def register():
 
     bpy.types.Scene.my_copy_rest_pose_rule = bpy.props.EnumProperty(items=(('U2U','Unreal to Unreal','Unreal to Unreal'),('U2M','Unreal to Mixamo','Unreal to Mixamo')))
     bpy.types.Scene.my_test_string = bpy.props.StringProperty(update=update_string)
-    # bpy.types.Scene.enum_Add = bpy.props.CollectionProperty(type=enumAdd)
     bpy.types.Scene.my_sourceBoneChain = bpy.props.CollectionProperty(type=boneList)
     bpy.types.Scene.my_source_chains = bpy.props.CollectionProperty(type=BoneChains)
     bpy.types.Scene.my_target_bone_chains_list = bpy.props.CollectionProperty(type=BoneChainsList)
@@ -1829,7 +1919,6 @@ def register():
     bpy.types.Scene.my_target_chains = bpy.props.CollectionProperty(type=BoneChains)
     bpy.types.Scene.my_target_chainsRig = bpy.props.CollectionProperty(type=BoneChainsList)
     bpy.types.Scene.my_ignore_bone_name = bpy.props.StringProperty()
-    # bpy.types.Scene.my_enum_bone_chain = bpy.props.CollectionProperty(type=EnumBoneCHain)
     bpy.types.Scene.my_chain_map = bpy.props.CollectionProperty(type=AN_PROP_ChainMap)
     bpy.types.Scene.my_bones_map = bpy.props.CollectionProperty(type=BonesMap)
     bpy.types.Scene.my_chain_map_index = bpy.props.IntProperty()
@@ -1848,7 +1937,6 @@ def unregister():
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.my_copy_rest_pose_rule
     del bpy.types.Scene.my_test_string
-    # del bpy.types.Scene.enum_Add
     del bpy.types.Scene.my_source_chains
     del bpy.types.Scene.my_target_bone_chains_list
     del bpy.types.Scene.my_sourceBoneChain
@@ -1856,7 +1944,6 @@ def unregister():
     del bpy.types.Scene.my_target_chainsRig
     del bpy.types.Scene.my_targetBoneChain
     del bpy.types.Scene.my_ignore_bone_name
-    # del bpy.types.Scene.my_enum_bone_chain
     del bpy.types.Scene.color_set_text
     del bpy.types.Scene.my_chain_map
     del bpy.types.Scene.my_source_rig
