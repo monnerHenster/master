@@ -50,8 +50,8 @@ ik_bones = [
     {'name':'calf_l','type':'IK','left_right':'left','role':'calf','child_bone':'foot_l','pole_bone':'calf_l','pole':180,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
     {'name':'foot_r','type':'IK','left_right':'right','role':'foot','child_bone':'ball_r','pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
     {'name':'foot_l','type':'IK','left_right':'left','role':'foot','child_bone':'ball_l','pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
-    {'name':'ball_r','type':'IK','left_right':'right','role':'toe','child_bone':Vector((0,0,20)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
-    {'name':'ball_l','type':'IK','left_right':'left','role':'toe','child_bone':Vector((0,0,20)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
+    {'name':'ball_r','type':'IK','left_right':'right','role':'toe','child_bone':Vector((0,-20,0)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
+    {'name':'ball_l','type':'IK','left_right':'left','role':'toe','child_bone':Vector((0,-20,0)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
     {'name':'pelvis','type':'Transform','left_right':'left','role':'','child_bone':'spine_01','pole_bone':'','pole':180,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'head','head_tail':0,'chain':2,'use_tail':True}
 ]
 
@@ -255,11 +255,9 @@ def set_armature_layer(layer=None,Viewtype=None):
         while i <= 31:
             if i == layer:
                 bpy.context.object.data.layers[i] = True
+            else:
+                bpy.context.object.data.layers[i] = False
             i+= 1
-    # if layer == 'on':
-    #     bpy.context.object.data.layers = [True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True]
-    # else:
-    #     bpy.context.object.data.layers = [False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False]
 
 def build_bones_map():
     scn = bpy.context.scene
@@ -1591,55 +1589,20 @@ class AN_OT_AddTempIKBone(bpy.types.Operator):
         make_foot_IK(ik_bones,'left')
         make_foot_IK(ik_bones,'right')
 
-        # for bone in ik_bones:
-        #     # 先处理左边再处理右边
-        #     if bone['left_right'] == 'left':
-        #         if bone['role'] == 'calf':
-        #             ik_bone_calf = create_edit_bone(bone['name']+'_IK')
-        #         if bone['role'] == 'foot':
-        #             bone_foot = create_edit_bone(bone['name'])
-        #             ik_bone_foot = create_edit_bone(bone['name']+'_IK')
-        #             ik_bone_foot_rotate = create_edit_bone(bone['name']+'_IK_rotate',1)
-        #             ik_bone_foot_bottom = create_edit_bone(bone['name']+'_IK_bottom',1)
-        #         if bone['role'] == 'toe':
-        #             ik_bone_toe = create_edit_bone(bone['name']+'_IK')
-
-        # ik_bone_calf.parent = ik_bone_foot_rotate
-
-        # ik_bone_foot_rotate.head = ik_bone_foot_rotate.tail = ik_bone_foot.head[:]
-        # ik_bone_foot_rotate.tail += Vector((0,20,0))
-
-        # ik_bone_foot_bottom.head = ik_bone_foot_bottom.tail = ik_bone_foot.head[:]
-        # ik_bone_foot_bottom.tail += Vector((0,20,0))
-
-        # ik_bone_foot_rotate.parent = ik_bone_foot.parent = ik_bone_toe.parent = ik_bone_foot_bottom
-        
-        # for bone in ik_bones:
-        #     # 处理右边
-        #     if bone['left_right'] == 'right':
-        #         if bone['role'] == 'calf':
-        #             ik_bone_calf = create_edit_bone(bone['name']+'_IK')
-        #         if bone['role'] == 'foot':
-        #             bone_foot = create_edit_bone(bone['name'])
-        #             ik_bone_foot = create_edit_bone(bone['name']+'_IK')
-        #             ik_bone_foot_rotate = create_edit_bone(bone['name']+'_IK_rotate',1)
-        #             ik_bone_foot_bottom = create_edit_bone(bone['name']+'_IK_bottom',1)
-        #         if bone['role'] == 'toe':
-        #             ik_bone_toe = create_edit_bone(bone['name']+'_IK')
-
-        # ik_bone_calf.parent = ik_bone_foot_rotate
-
-        # ik_bone_foot_rotate.head = ik_bone_foot_rotate.tail = ik_bone_foot.head[:]
-        # ik_bone_foot_rotate.tail += Vector((0,20,0))
-
-        # ik_bone_foot_bottom.head = ik_bone_foot_bottom.tail = ik_bone_foot.head[:]
-        # ik_bone_foot_bottom.head += Vector((0,0,-2))
-        # ik_bone_foot_bottom.tail = ik_bone_foot_bottom.head + Vector((0,20,0))
-
-        # ik_bone_foot_rotate.parent = ik_bone_foot.parent = ik_bone_toe.parent = ik_bone_foot_bottom
-
-        # move to pose location
         select_mode(scn.my_source_rig,'POSE')
+        # move parent to pose location
+        for bone in ik_bones:
+            if bone['role'] == 'foot':
+                bone_IK = scn.my_source_rig.pose.bones.get(bone['name']+'_IK_bottom')
+                cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
+                cst.target = scn.my_source_rig
+                cst.head_tail =0
+                cst.subtarget = bone['child_bone']
+                bpy.context.object.data.bones.active = bone_IK.bone
+                bone_IK.bone.select = True
+                bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
+
+        # move child to pose location
         for bone in ik_bones:
             if bone['type'] == 'IK':
                 bone_IK = scn.my_source_rig.pose.bones.get(bone['name']+'_IK')
@@ -1692,7 +1655,7 @@ class AN_OT_AddTempIKBone(bpy.types.Operator):
                 cst.target = scn.my_source_rig
                 cst.subtarget = bone['name']+'_IK_Transform'
 
-        bpy.context.object.data.layers[1] = True
+        set_armature_layer(1)
         select_mode(scn.my_source_rig,'POSE')
         # bpy.ops.an.toggle_ik()
 
@@ -1889,7 +1852,7 @@ class BoneChainsPanel(bpy.types.Panel):
 
 class AN_OP_Panel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
-    bl_label = "Operator"
+    bl_label = "Common Operator"
     bl_category = "AniTool"
     bl_idname = "HI_PT_Panel5"
     bl_space_type = 'VIEW_3D'
@@ -1908,7 +1871,7 @@ class AN_PT_PanelIK(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "IK Operator"
     bl_category = "AniTool"
-    bl_idname = "IK_PT_Operator1"
+    bl_idname = "IK_PT_Operator"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
 
@@ -1921,11 +1884,26 @@ class AN_PT_PanelIK(bpy.types.Panel):
             else:
                 row.operator(button.bl_idname)
 
-class AN_PT_ChainList(bpy.types.Panel):
+class AN_PT_PanelIK_Bone(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
-    bl_label = "ChainList"
+    bl_label = "IK Bone Set"
+    bl_parent_id = "IK_PT_Operator"
     bl_category = "AniTool"
-    bl_idname = "HI_PT_Panel6"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+
+    def draw(self, context):
+        scn = bpy.context.scene
+        row = self.layout.row()
+
+        row.label(text='Source Armature')
+
+
+class AN_PT_ArmatureSet(bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "Armature Set"
+    bl_category = "AniTool"
+    bl_idname = "HI_PT_armatureset"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
 
@@ -1940,6 +1918,27 @@ class AN_PT_ChainList(bpy.types.Panel):
         row = box.row(align=True)
         row.label(text='Target Armature')
         row.prop(scn,'my_target_rig',text='')
+
+class AN_PT_ChainList(bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "ChainList"
+    bl_category = "AniTool"
+    bl_idname = "HI_PT_Panel6"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        scn = bpy.context.scene
+
+        # Armature选择
+        # box = self.layout.box()
+        # row = box.row(align=True)
+        # row.label(text='Source Armature')
+        # row.prop(scn,'my_source_rig',text='')
+        # row = box.row(align=True)
+        # row.label(text='Target Armature')
+        # row.prop(scn,'my_target_rig',text='')
 
         # 指定骨骼屏蔽
         box = self.layout.box()
@@ -2024,7 +2023,9 @@ class AN_PT_ChainList(bpy.types.Panel):
                         row.label(text=bone.name)
 
 
-classes = [AN_PROP_BoneIgnore,
+classes = [AN_PT_ArmatureSet,
+           
+           AN_PROP_BoneIgnore,
            AN_OT_AddDefaultIgnoe,
            AN_OT_AutoAddIgnoe,
            AN_OT_ExportMap,
@@ -2039,6 +2040,7 @@ classes = [AN_PROP_BoneIgnore,
            AN_OT_AlightRestBone,
 
            AN_PT_PanelIK,
+           AN_PT_PanelIK_Bone,
            AN_OT_AddIKBone,
            AN_OT_AddTempIKBone,
            AN_OT_ToggleIK,
