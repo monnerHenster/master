@@ -1016,14 +1016,62 @@ def copy_rest_pose(bone_map):
             )
             pb1.matrix = m @ pb1.matrix
 
+def get_source_rig(self):
+    scn = bpy.context.scene
+    if self.get('in__source_rig','') != '':
+        return self.get('in__source_rig','')
+    else:
+        if bpy.context.selected_objects :
+            scn.source_rig = bpy.context.selected_objects[0].name
+            return bpy.context.selected_objects[0].name
+        else:
+            return ''
+
+def set_source_rig(self,value):
+    scn = bpy.context.scene
+    self['in__source_rig'] = value
+    if value != '':
+        scn.my_source_rig = bpy.data.objects[value]
+    
+def _pick_object(action):
+    obj = bpy.context.object
+    scene = bpy.context.scene
+
+    if action == "pick_source":
+        scene.source_rig = obj.name
+    elif action == "pick_target":
+        scene.target_rig = obj.name
+    elif action == 'pick_bone' or action == 'pick_pole':
+        bname = ''
+        try:            
+            if bpy.context.mode == 'POSE':
+                bname = bpy.context.selected_pose_bones[0].name
+            elif bpy.context.mode == 'EDIT_ARMATURE':
+                bname = bpy.context.selected_editable_bones[0].name            
+        except:
+            print("can't pick bone")
+
+        if action == 'pick_pole':        
+            scene.bones_map[scene.bones_map_index].ik_pole = bname
+        elif action == 'pick_bone':
+            scene.bones_map[scene.bones_map_index].name = bname      
+
+# class Prpp_Armature(bpy.types.PropertyGroup):
+#     def set_selected(self):
+#         scn = bpy.context.scene
+#         if not scn.my_source_rig :
+#             pass
+#         else:
+#             return scn.my_source_rig
+
+#     name:bpy.props.StringProperty(get=set_selected)
+#     in__name:bpy.props.StringProperty()
+
 
 class EnumBoneCHain(bpy.types.PropertyGroup):
     BoneChain:bpy.props.EnumProperty(items=getItem)
     IsSelected:bpy.props.BoolProperty()
     # BoneChain:bpy.props.EnumProperty(items=getItem,get=get_enum, set=set_enum)
-
-
-
 
 class boneList(bpy.types.PropertyGroup):
     # bone:bpy.props.CollectionProperty(type=bpy.types.PoseBone)
@@ -1033,8 +1081,6 @@ class boneList(bpy.types.PropertyGroup):
 class AN_PROP_BoneIgnore(bpy.types.PropertyGroup):
     is_ignore:bpy.props.BoolProperty(get=get_ignore_bool,set=set_ignore_bool)
     in_is_ignore:bpy.props.BoolProperty()
-
-
 
 class BoneChains(bpy.types.PropertyGroup):
     # isExtraBone:bpy.props.BoolProperty()
@@ -1062,7 +1108,6 @@ class AN_PROP_ChainMap(bpy.types.PropertyGroup):
     in_name:bpy.props.StringProperty()
     old_name:bpy.props.StringProperty()
     # test:bpy.props.IntProperty()
-    
 
 class BonesMap(bpy.types.PropertyGroup):
     source_bone: bpy.props.StringProperty()
@@ -1479,6 +1524,40 @@ class AN_OT_AlightRestBone(bpy.types.Operator):
         select_mode(temp_source_rig,'OBJECT')
         bpy.ops.object.select_grouped(extend=True, type='CHILDREN_RECURSIVE')
         bpy.ops.object.delete()
+
+        return {'FINISHED'}
+
+class AN_OT_pick_object(bpy.types.Operator):
+
+    #tooltip
+    """Pick the selected object/bone"""
+
+    bl_idname = "an.pick_object"
+    bl_label = "pick_object"
+    bl_options = {'UNDO'}
+
+    action : bpy.props.EnumProperty(
+        items=(
+                ('pick_source', 'pick_source', ''),
+                ('pick_target', 'pick_target', ''),
+                ('pick_bone', 'pick_bone', ''),
+                ('pick_pole', 'pick_pole', '')
+            )
+        )
+
+    @classmethod
+    def poll(cls, context):
+        return (context.active_object != None)
+
+    def execute(self, context):
+        use_global_undo = context.preferences.edit.use_global_undo
+        context.preferences.edit.use_global_undo = False
+
+        try:
+            _pick_object(self.action)
+
+        finally:
+            context.preferences.edit.use_global_undo = use_global_undo
 
         return {'FINISHED'}
     
@@ -1914,6 +1993,9 @@ class AN_PT_ArmatureSet(bpy.types.Panel):
         box = self.layout.box()
         row = box.row(align=True)
         row.label(text='Source Armature')
+        # row.prop(scn,'source_rig',text='')
+        row.prop_search(scn, "source_rig", bpy.data, "objects", text="")
+        row.operator("an.pick_object", text="", icon='EYEDROPPER').action = 'pick_source'
         row.prop(scn,'my_source_rig',text='')
         row = box.row(align=True)
         row.label(text='Target Armature')
@@ -2023,46 +2105,52 @@ class AN_PT_ChainList(bpy.types.Panel):
                         row.label(text=bone.name)
 
 
-classes = [AN_PT_ArmatureSet,
-           
-           AN_PROP_BoneIgnore,
-           AN_OT_AddDefaultIgnoe,
-           AN_OT_AutoAddIgnoe,
-           AN_OT_ExportMap,
-           AN_OT_ImportMap,
-           AN_OT_ApplyRestPose,
-           AN_OT_CopyRestPose,
-           AN_OT_SwitchBindRule,
-           AN_OT_ClearConstraints,
-           AN_OT_SaveIgnoreName,
-           AN_OT_BindRuleReset,
-           AN_OT_Bind_Rule,
-           AN_OT_AlightRestBone,
+classes = [
+        # Armature Set
+        AN_PT_ArmatureSet,
+        AN_PROP_BoneIgnore,
+        AN_OT_AddDefaultIgnoe,
+        AN_OT_AutoAddIgnoe,
+        AN_OT_ExportMap,
+        AN_OT_ImportMap,
+        AN_OT_ApplyRestPose,
+        AN_OT_CopyRestPose,
+        AN_OT_SwitchBindRule,
+        AN_OT_ClearConstraints,
+        AN_OT_SaveIgnoreName,
+        AN_OT_BindRuleReset,
+        AN_OT_Bind_Rule,
+        AN_OT_AlightRestBone,
 
-           AN_PT_PanelIK,
-           AN_PT_PanelIK_Bone,
-           AN_OT_AddIKBone,
-           AN_OT_AddTempIKBone,
-           AN_OT_ToggleIK,
-           AN_OT_LinkIKBones,
+        AN_PT_PanelIK,
+        AN_PT_PanelIK_Bone,
+        AN_OT_pick_object,
+        AN_OT_AddIKBone,
+        AN_OT_AddTempIKBone,
+        AN_OT_ToggleIK,
+        AN_OT_LinkIKBones,
 
-           AN_PGT_ChainBindRule,
-           AN_OP_Panel,
-           ARP_UL_items,
-           BonesMap,
-           AN_OT_CopyRotation,
-           AN_PROP_ChainMap,
-           AN_PT_ChainList,
-           AN_OT_BuildList,
-           autoSetChainOP,
-           AN_OT_AutomapBoneChains,
-           boneList,
-           BoneChains,
-           BoneChainsList,
-           AN_OT_ClearIgnoreBone,
-           AN_OT_BuildChains,
-           EnumBoneCHain,
-           AN_OT_SetActionRange]
+        AN_PT_ChainList,
+        AN_PGT_ChainBindRule,
+        AN_OP_Panel,
+        ARP_UL_items,
+        BonesMap,
+        AN_OT_CopyRotation,
+        AN_PROP_ChainMap,
+        AN_OT_BuildList,
+        autoSetChainOP,
+        AN_OT_AutomapBoneChains,
+        boneList,
+        BoneChains,
+        BoneChainsList,
+        AN_OT_ClearIgnoreBone,
+        AN_OT_BuildChains,
+        EnumBoneCHain,
+        AN_OT_SetActionRange,
+        
+        #Properties
+        
+        ]
 
 reg_button = [
     AN_OT_AutomapBoneChains,
@@ -2103,6 +2191,7 @@ def register():
     bpy.types.Scene.my_chain_bind_rule_LR = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_chain_bind_rule_body = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_source_rig = bpy.props.PointerProperty(type=bpy.types.Object)
+    bpy.types.Scene.source_rig = bpy.props.StringProperty(get=get_source_rig,set=set_source_rig)
     bpy.types.Scene.my_target_rig = bpy.props.PointerProperty(type=bpy.types.Object)
     bpy.types.Scene.color_set_text = bpy.props.FloatVectorProperty(name="Color Text", subtype="COLOR_GAMMA",
                                                                    default=(0.887, 0.887, 0.887), min=0.0, max=1.0,
@@ -2124,6 +2213,7 @@ def unregister():
     del bpy.types.Scene.color_set_text
     del bpy.types.Scene.my_chain_map
     del bpy.types.Scene.my_source_rig
+    del bpy.types.Scene.source_rig
     del bpy.types.Scene.my_target_rig
     del bpy.types.Scene.my_chain_bind_rule_LR
     del bpy.types.Scene.my_chain_bind_rule_body
