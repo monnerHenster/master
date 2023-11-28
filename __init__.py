@@ -186,13 +186,13 @@ def mat3_to_vec_roll(mat, ret_vec=False):
     else:
         return roll
 
-def create_edit_bone(bone_name,layer = None):
-    b = bpy.context.active_object.data.edit_bones.get(bone_name)
-    if not b:
-        b = bpy.context.active_object.data.edit_bones.new(bone_name)
-    if layer:
-        set_bone_layer(b,layer)
-    return b
+def create_edit_bone(bone_name,arm=None,coll_name = None):
+    eb = bpy.context.active_object.data.edit_bones.get(bone_name)
+    if not eb:
+        eb = bpy.context.active_object.data.edit_bones.new(bone_name)
+    if coll_name:
+        set_bone_layer(arm,eb,coll_name)
+    return eb
 
 def make_foot_IK(ik_bones,left_right):
     for bone in ik_bones:
@@ -237,27 +237,35 @@ def set_active_object(object_name):
      object_name.hide_set(False)
      object_name.select_set(state=True)
 
-def set_bone_layer(editbone, layer_idx, multi=False):
-    editbone.layers[layer_idx] = True
-    if multi:
-        return
-    for i, lay in enumerate(editbone.layers):
-        if i != layer_idx:
-            editbone.layers[i] = False
+def set_bone_layer(arm,editbone, coll_name, multi=False):
+    try:
+        arm.data.collections[coll_name].assign(editbone)
+    except:
+        arm.data.collections.new(coll_name)
+        arm.data.collections[coll_name].assign(editbone)
+    # editbone.layers[layer_idx] = True
+    # if multi:
+    #     return
+    # for i, lay in enumerate(editbone.layers):
+    #     if i != layer_idx:
+    #         editbone.layers[i] = False
 
-def set_armature_layer(layer=None,Viewtype=None):
-    i = 0 
+def set_armature_layer(object,collection_name=None,Viewtype=None):
     if type(Viewtype) == bool:
-        while i <= 31:
-            bpy.context.object.data.layers[i] = Viewtype
-            i+= 1
-    if layer :
-        while i <= 31:
-            if i == layer:
-                bpy.context.object.data.layers[i] = True
+        for bcoll in object.data.collections:
+            bcoll.is_visible = Viewtype
+    if collection_name :
+        for bcoll in object.data.collections:
+            if bcoll.name == collection_name:
+                bcoll.is_visible = True
             else:
-                bpy.context.object.data.layers[i] = False
-            i+= 1
+                bcoll.is_visible =False
+        # while i <= 31:
+        #     if i == collection_name:
+        #         bpy.context.object.data.layers[i] = True
+        #     else:
+        #         bpy.context.object.data.layers[i] = False
+        #     i+= 1
 
 def build_bones_map():
     scn = bpy.context.scene
@@ -1639,25 +1647,26 @@ class AN_OT_AddTempIKBone(bpy.types.Operator):
 
         global ik_bones
         select_mode(scn.my_source_rig,'EDIT')
-        set_armature_layer(Viewtype=True)
+        set_armature_layer(scn.my_source_rig,Viewtype=True)
         # create ik bones
         for bone in ik_bones:
             if bone['type'] == 'IK':
-                bone_IK = create_edit_bone(bone['name']+'_IK',1)
+                bone_IK = create_edit_bone(bone['name']+'_IK','ik controls')
+                # bone_IK = create_edit_bone(bone['name']+'_IK',1)
                 bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
                 bone_IK.head = bone_IK.tail = eval('bone_target.'+bone['edit_bone_head'])[:]
                 bone_IK.tail += bone['edit_offset']
 
             if bone['type'] == 'Transform':
                 # duplicate original bone and child it
-                bone_IK_Transfrom = create_edit_bone(bone['name']+'_IK_Transform',1)
+                bone_IK_Transfrom = create_edit_bone(bone['name']+'_IK_Transform','ik controls')
                 bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
                 bone_IK_Transfrom.head = bone_target.head[:]
                 bone_IK_Transfrom.tail = bone_target.tail[:]
                 bone_IK_Transfrom.matrix = bone_target.matrix
                 
             if bone['pole_bone']:
-                bone_IK_Pole = create_edit_bone(bone['name']+'_IK_Pole',1)
+                bone_IK_Pole = create_edit_bone(bone['name']+'_IK_Pole','ik controls')
                 bone_IK_Pole.parent = bone_IK
                 bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
                 bone_IK_Pole.head = bone_target.head
