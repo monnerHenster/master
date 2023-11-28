@@ -60,26 +60,6 @@ default_rule_target_name_LR = ['Left','Right']
 default_rule_source_name_body = ['index','middle','pinky','ring','thumb','thigh','clavicle','neck']
 default_rule_target_name_body = ['Index','Middle','Pinky','Ring','Thumb','UpLeg','Shoulder','Neck']
 
-# reg_button = [
-#     "an.automap_bone_chains",
-#     "an.alight_rest_bone",
-#     "auto_set_chain.go",
-#     "an.build_list",
-#     "copy_rotation.go",
-#     "an.clear_constraints",
-#     "an.copy_rest_pose",
-#     "an.apply_rest_pose",
-#     "an.set_action_range",
-# ]
-
-
-# ik_button = [
-#     "an.add_ikbone",
-#     "an.add_temp_ikbone",
-#     "an.toggle_ik",
-#     "an.link_ik_bone"
-# ]
-
 def set_bone_chain(self,context,BoneChains,scnBoneChains):
         scnBoneChains.clear()
         scn = bpy.context.scene
@@ -1026,7 +1006,9 @@ def copy_rest_pose(bone_map):
 
 def get_source_rig(self):
     scn = bpy.context.scene
-    if self.get('in__source_rig','') != '':
+    # print(self.get('in__source_rig',''))
+    # print(bool(bpy.data.objects.get(self.get('in__source_rig',''))))
+    if self.get('in__source_rig','') != '' and bool(bpy.data.objects.get(self.get('in__source_rig',''))):
         return self.get('in__source_rig','')
     else:
         if bpy.context.selected_objects :
@@ -1035,6 +1017,16 @@ def get_source_rig(self):
         else:
             return ''
 
+def _set_source_rig():
+    scn = bpy.context.scene
+    source_rig = ''
+    if (scn.source_rig == '' or bpy.data.objects.get(scn.source_rig) not in bpy.context.scene.objects) and bpy.context.selected_objects:
+        source_rig = bpy.context.selected_objects[0].name
+    else:
+        source_rig = scn.source_rig
+    scn.source_rig = source_rig
+    scn.my_source_rig = bpy.data.objects.get(scn.source_rig)
+        
 def set_source_rig(self,value):
     scn = bpy.context.scene
     self['in__source_rig'] = value
@@ -1686,7 +1678,7 @@ class AN_OT_AddTempIKBone(bpy.types.Operator):
                 cst.target = scn.my_source_rig
                 cst.head_tail =0
                 cst.subtarget = bone['child_bone']
-                bpy.context.object.data.bones.active = bone_IK.bone
+                bpy.context.object.data.bones.active = bone_IK.bonfe
                 bone_IK.bone.select = True
                 bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
 
@@ -1788,6 +1780,7 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
     def execute(self, context):
         global ik_bones
         scn = bpy.context.scene
+        _set_source_rig()
         select_mode(scn.my_source_rig,'EDIT')
         for bone in ik_bones:
             if type(bone['child_bone']) == str:
@@ -2200,7 +2193,8 @@ def register():
     bpy.types.Scene.my_chain_bind_rule_LR = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_chain_bind_rule_body = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_source_rig = bpy.props.PointerProperty(type=bpy.types.Object)
-    bpy.types.Scene.source_rig = bpy.props.StringProperty(get=get_source_rig,set=set_source_rig)
+    # bpy.types.Scene.source_rig = bpy.props.StringProperty(get=get_source_rig,set=set_source_rig)
+    bpy.types.Scene.source_rig = bpy.props.StringProperty()
     bpy.types.Scene.my_target_rig = bpy.props.PointerProperty(type=bpy.types.Object)
     bpy.types.Scene.color_set_text = bpy.props.FloatVectorProperty(name="Color Text", subtype="COLOR_GAMMA",
                                                                    default=(0.887, 0.887, 0.887), min=0.0, max=1.0,
