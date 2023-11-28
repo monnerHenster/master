@@ -174,6 +174,14 @@ def create_edit_bone(bone_name,arm=None,coll_name = None):
         set_bone_layer(arm,eb,coll_name)
     return eb
 
+def copy_edit_bone(origin_bone,new_bone,arm=None,coll_name = None):
+    oeb = create_edit_bone(origin_bone)
+    neb = create_edit_bone(new_bone,arm,coll_name)
+    neb.head = oeb.head
+    neb.tail = oeb.tail
+    neb.matrix = oeb.matrix
+    return neb
+
 def make_foot_IK(ik_bones,left_right):
     for bone in ik_bones:
         # 先处理左边再处理右边
@@ -1784,9 +1792,11 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
         select_mode(scn.my_source_rig,'EDIT')
         for bone in ik_bones:
             if type(bone['child_bone']) == str:
-                link_bone_parent = create_edit_bone(bone['name'])
+                neb = copy_edit_bone(bone['name'],bone['name']+'_ik_rep',arm=scn.my_source_rig,coll_name='ik_rep')
+                # link_bone_parent = create_edit_bone(bone['name'])
                 link_bone_child = create_edit_bone(bone['child_bone'])
-                link_bone_parent.tail = link_bone_child.head[:]
+                neb.tail = link_bone_child.head[:]
+                neb.parent = create_edit_bone(bone['name'])
             else:
                 link_bone_parent = create_edit_bone(bone['name'])
                 link_bone_parent.tail = link_bone_parent.head + bone['child_bone']
