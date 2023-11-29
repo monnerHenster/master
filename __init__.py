@@ -20,6 +20,7 @@ from bpy_extras.io_utils import ExportHelper
 from . import decoder
 from . import encoder
 from . import tz
+from . import config
 
 
 bl_info = {
@@ -43,17 +44,19 @@ save_new_bind_rule = False
 save_new_ignore_name = False
 boneIgnoreName = 'lowerarm_r_IK,calf_r_IK,lowerarm_l_IK,calf_l_IK,thigh_twist_01_l,calf_twist_01_r,calf_twist_01_l,thigh_twist_01_r,upperarm_twist_01_l,upperarm_twist_01_r,lowerarm_twist_01_l,lowerarm_twist_01_r,ik_hand_root,ik_hand_r,ik_foot_root,ik_foot_r,ik_foot_l'
 
-ik_bones = [
-    {'name':'lowerarm_r','type':'IK','left_right':'left','role':'','child_bone':'hand_r','pole_bone':'lowerarm_r','pole':180,'pole_loc':Vector((0,20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
-    {'name':'lowerarm_l','type':'IK','left_right':'left','role':'','child_bone':'hand_l','pole_bone':'lowerarm_l','pole':0,'pole_loc':Vector((0,20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
-    {'name':'calf_r','type':'IK','left_right':'right','role':'calf','child_bone':'foot_r','pole_bone':'calf_r','pole':0,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
-    {'name':'calf_l','type':'IK','left_right':'left','role':'calf','child_bone':'foot_l','pole_bone':'calf_l','pole':180,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
-    {'name':'foot_r','type':'IK','left_right':'right','role':'foot','child_bone':'ball_r','pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
-    {'name':'foot_l','type':'IK','left_right':'left','role':'foot','child_bone':'ball_l','pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
-    {'name':'ball_r','type':'IK','left_right':'right','role':'toe','child_bone':Vector((0,-20,0)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
-    {'name':'ball_l','type':'IK','left_right':'left','role':'toe','child_bone':Vector((0,-20,0)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
-    {'name':'pelvis','type':'Transform','left_right':'left','role':'','child_bone':'spine_01','pole_bone':'','pole':180,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'head','head_tail':0,'chain':2,'use_tail':True}
-]
+# ik_bones = [
+#     {'name':'lowerarm_r','type':'IK','left_right':'left','role':'','child_bone':'hand_r','pole_bone':'lowerarm_r','pole':180,'pole_loc':Vector((0,20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
+#     {'name':'lowerarm_l','type':'IK','left_right':'left','role':'','child_bone':'hand_l','pole_bone':'lowerarm_l','pole':0,'pole_loc':Vector((0,20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
+#     {'name':'calf_r','type':'IK','left_right':'right','role':'calf','child_bone':'foot_r','pole_bone':'calf_r','pole':0,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
+#     {'name':'calf_l','type':'IK','left_right':'left','role':'calf','child_bone':'foot_l','pole_bone':'calf_l','pole':180,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'tail','head_tail':1,'chain':2,'use_tail':True},
+#     {'name':'foot_r','type':'IK','left_right':'right','role':'foot','child_bone':'ball_r','pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
+#     {'name':'foot_l','type':'IK','left_right':'left','role':'foot','child_bone':'ball_l','pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
+#     {'name':'ball_r','type':'IK','left_right':'right','role':'toe','child_bone':Vector((0,-20,0)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
+#     {'name':'ball_l','type':'IK','left_right':'left','role':'toe','child_bone':Vector((0,-20,0)),'pole_bone':'','pole':180,'pole_loc':Vector((0,0,20)),'edit_offset':Vector((0,0,10)),'edit_bone_head':'tail','head_tail':1,'chain':1,'use_tail':True},
+#     {'name':'pelvis','type':'Transform','left_right':'left','role':'','child_bone':'spine_01','pole_bone':'','pole':180,'pole_loc':Vector((0,-20,0)),'edit_offset':Vector((0,20,0)),'edit_bone_head':'head','head_tail':0,'chain':2,'use_tail':True}
+# ]
+
+ik_bones = config.ik_bones
 
 default_rule_source_name_LR = ['_l','_r']
 default_rule_target_name_LR = ['Left','Right']
@@ -166,17 +169,19 @@ def mat3_to_vec_roll(mat, ret_vec=False):
     else:
         return roll
 
-def create_edit_bone(bone_name,arm=None,coll_name = None):
+def create_edit_bone(bone_name,arm=None,coll_name = None,color=None):
     eb = bpy.context.active_object.data.edit_bones.get(bone_name)
     if not eb:
         eb = bpy.context.active_object.data.edit_bones.new(bone_name)
     if coll_name:
         set_bone_layer(arm,eb,coll_name)
+    if color:
+        eb.color.palette = color
     return eb
 
-def copy_edit_bone(origin_bone,new_bone,arm=None,coll_name = None):
+def copy_edit_bone(origin_bone,new_bone):
     oeb = create_edit_bone(origin_bone)
-    neb = create_edit_bone(new_bone,arm,coll_name)
+    neb = create_edit_bone(new_bone)
     neb.head = oeb.head
     neb.tail = oeb.tail
     neb.matrix = oeb.matrix
@@ -1028,7 +1033,7 @@ def get_source_rig(self):
 def _set_source_rig():
     scn = bpy.context.scene
     source_rig = ''
-    if (scn.source_rig == '' or bpy.data.objects.get(scn.source_rig) not in bpy.context.scene.objects) and bpy.context.selected_objects:
+    if (scn.source_rig == '' or (bpy.data.objects.get(scn.source_rig).name not in bpy.context.scene.objects)) and bpy.context.selected_objects:
         source_rig = bpy.context.selected_objects[0].name
     else:
         source_rig = scn.source_rig
@@ -1790,19 +1795,62 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
         scn = bpy.context.scene
         _set_source_rig()
         select_mode(scn.my_source_rig,'EDIT')
+
+        # create ik help and ik bones
         for bone in ik_bones:
             if type(bone['child_bone']) == str:
-                neb = copy_edit_bone(bone['name'],bone['name']+'_ik_rep',arm=scn.my_source_rig,coll_name='ik_rep')
-                # link_bone_parent = create_edit_bone(bone['name'])
+                link_bone_parent = copy_edit_bone(bone['name'],bone['name']+'_ik_rep')
+                create_edit_bone(link_bone_parent.name,arm=scn.my_source_rig,coll_name='ik_rep',color='THEME01')
                 link_bone_child = create_edit_bone(bone['child_bone'])
-                neb.tail = link_bone_child.head[:]
-                neb.parent = create_edit_bone(bone['name'])
-            else:
-                link_bone_parent = create_edit_bone(bone['name'])
-                link_bone_parent.tail = link_bone_parent.head + bone['child_bone']
+                link_bone_parent.tail = link_bone_child.head[:]
+                link_bone_parent.parent = create_edit_bone(bone['name']).parent
+
+                link_bone_help = copy_edit_bone(bone['name']+'_ik_rep',bone['name']+'_ik_rep_help')
+                link_bone_help.parent = create_edit_bone(bone['name'])
+                create_edit_bone(link_bone_help.name,arm=scn.my_source_rig,coll_name='ik_rep_help',color='THEME03')
+
+            # elif type(bone['child_bone']) == Vector:
+            #     link_bone_parent = copy_edit_bone(bone['name'],bone['name']+'_ik_rep')
+            #     create_edit_bone(link_bone_parent.name,arm=scn.my_source_rig,coll_name='ik_rep',color='THEME01')
+            #     link_bone_parent.tail = link_bone_parent.head + bone['child_bone']
+            #     link_bone_parent.parent = create_edit_bone(bone['name'])
+
+        # copy transform
+        select_mode(scn.my_source_rig,'POSE')
+        for eb in scn.my_source_rig.data.collections['ik_rep'].bones:
+            cst = scn.my_source_rig.pose.bones[eb.name].constraints.new('COPY_TRANSFORMS')
+            cst.target = scn.my_source_rig
+            cst.subtarget = eb.name+'_help'
+
+        bpy.ops.pose.select_all(action='DESELECT')
+        for eb in scn.my_source_rig.data.collections['ik_rep'].bones:
+            # scn.my_source_rig.pose.bones[eb.name]
+            eb.select = True
+        bpy.ops.nla.bake(
+            frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
+            frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
+            step=1,
+            only_selected=True,
+            visual_keying=True,
+            clear_constraints = True,
+            use_current_action = True,
+            bake_types={'POSE'}
+            )
+        
+        # select_mode(scn.my_source_rig,'EDIT')
+        # for bone in ik_bones:
+        #     if type(bone['child_bone']) == str:
+        #         link_bone_parent = copy_edit_bone(bone['name'],bone['name']+'_ik_rep')
+        #         create_edit_bone(link_bone_parent.name,arm=scn.my_source_rig,coll_name='ik_rep',color='THEME01')
+        #         link_bone_child = create_edit_bone(bone['child_bone'])
+        #         link_bone_parent.tail = link_bone_child.head[:]
+        #         link_bone_parent.parent = create_edit_bone(bone['name']).parent
+
+        #         link_bone_help = copy_edit_bone(bone['name']+'_ik_rep',bone['name']+'_ik_rep_help')
+        #         link_bone_help.parent = create_edit_bone(bone['name'])
+        #         create_edit_bone(link_bone_help.name,arm=scn.my_source_rig,coll_name='ik_rep_help',color='THEME03')
 
         select_mode(scn.my_source_rig,'POSE')
-
         return {'FINISHED'}
 
 class AN_OT_Bind_Rule(bpy.types.Operator):
