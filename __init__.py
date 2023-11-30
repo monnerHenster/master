@@ -1794,6 +1794,7 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
         global ik_bones
         scn = bpy.context.scene
         _set_source_rig()
+        source_rig = scn.my_source_rig
         select_mode(scn.my_source_rig,'EDIT')
 
         # create ik help and ik bones
@@ -1837,8 +1838,25 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
             bake_types={'POSE'}
             )
         
-        # select_mode(scn.my_source_rig,'EDIT')
-        # for bone in ik_bones:
+        select_mode(scn.my_source_rig,'POSE')
+        ik_ebone_help_list = []
+        for ebone in source_rig.data.collections['ik_rep_help'].bones:
+            ik_ebone_help_list.append(ebone.name)
+
+        select_mode(scn.my_source_rig,'EDIT')
+        for ebone_name in ik_ebone_help_list:
+            create_edit_bone(ebone_name.replace('_ik_rep_help','')).parent = create_edit_bone(ebone_name.replace('_help',''))
+            # a = ebone_name.replace('_ik_rep_help','')
+            # b = ebone_name.replace('_ik_rep','')
+            # c = create_edit_bone(ebone_name.replace('_ik_rep_help',''))
+            # break
+            # print(ebone_name.replace('_ik_rep_help',''))
+            # print(ebone_name.replace('_ik_rep',''))
+
+        select_mode(scn.my_source_rig,'EDIT')
+
+
+
         #     if type(bone['child_bone']) == str:
         #         link_bone_parent = copy_edit_bone(bone['name'],bone['name']+'_ik_rep')
         #         create_edit_bone(link_bone_parent.name,arm=scn.my_source_rig,coll_name='ik_rep',color='THEME01')
@@ -1850,7 +1868,9 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
         #         link_bone_help.parent = create_edit_bone(bone['name'])
         #         create_edit_bone(link_bone_help.name,arm=scn.my_source_rig,coll_name='ik_rep_help',color='THEME03')
 
-        select_mode(scn.my_source_rig,'POSE')
+
+
+        # select_mode(scn.my_source_rig,'POSE')
         return {'FINISHED'}
 
 class AN_OT_Bind_Rule(bpy.types.Operator):
