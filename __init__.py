@@ -1691,7 +1691,7 @@ class AN_OT_AddTempIKBone(bpy.types.Operator):
                 cst.target = scn.my_source_rig
                 cst.head_tail =0
                 cst.subtarget = bone['child_bone']
-                bpy.context.object.data.bones.active = bone_IK.bonfe
+                bpy.context.object.data.bones.active = bone_IK.bone
                 bone_IK.bone.select = True
                 bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
 
@@ -1816,7 +1816,20 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
             #     link_bone_parent.tail = link_bone_parent.head + bone['child_bone']
             #     link_bone_parent.parent = create_edit_bone(bone['name'])
 
-        # copy transform
+        # check if already done
+        select_mode(scn.my_source_rig,'POSE')
+        ik_ebone_help = []
+        ik_ebone_help_all = [a.name for a in source_rig.data.collections['ik_rep_help'].bones]
+        select_mode(scn.my_source_rig,'EDIT')
+        for ebone_name in ik_ebone_help_all:
+            if create_edit_bone(ebone_name.replace('_ik_rep_help','')).parent != create_edit_bone(ebone_name.replace('_help','')):
+                ik_ebone_help.append(ebone_name) 
+
+        if len(ik_ebone_help) == 0:
+            select_mode(scn.my_source_rig,'POSE')
+            return {'FINISHED'}
+        
+        # copy transform and bake to ik rep
         select_mode(scn.my_source_rig,'POSE')
         for eb in scn.my_source_rig.data.collections['ik_rep'].bones:
             cst = scn.my_source_rig.pose.bones[eb.name].constraints.new('COPY_TRANSFORMS')
@@ -1825,7 +1838,6 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
 
         bpy.ops.pose.select_all(action='DESELECT')
         for eb in scn.my_source_rig.data.collections['ik_rep'].bones:
-            # scn.my_source_rig.pose.bones[eb.name]
             eb.select = True
         bpy.ops.nla.bake(
             frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
@@ -1838,23 +1850,32 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
             bake_types={'POSE'}
             )
         
-        select_mode(scn.my_source_rig,'POSE')
-        ik_ebone_help_list = []
-        for ebone in source_rig.data.collections['ik_rep_help'].bones:
-            ik_ebone_help_list.append(ebone.name)
+        # select_mode(scn.my_source_rig,'POSE')
+        # ik_ebone_help_list = []
+        # for ebone in source_rig.data.collections['ik_rep_help'].bones:
+        #     ik_ebone_help_list.append(ebone.name)
 
+        # change origin bone's parent to ik rep
         select_mode(scn.my_source_rig,'EDIT')
-        for ebone_name in ik_ebone_help_list:
+        for ebone_name in ik_ebone_help:
             create_edit_bone(ebone_name.replace('_ik_rep_help','')).parent = create_edit_bone(ebone_name.replace('_help',''))
-            # a = ebone_name.replace('_ik_rep_help','')
-            # b = ebone_name.replace('_ik_rep','')
-            # c = create_edit_bone(ebone_name.replace('_ik_rep_help',''))
-            # break
-            # print(ebone_name.replace('_ik_rep_help',''))
-            # print(ebone_name.replace('_ik_rep',''))
 
-        select_mode(scn.my_source_rig,'EDIT')
-
+        # clear all oregin bone's transforms
+        select_mode(scn.my_source_rig,'POSE')
+        fcs = source_rig.animation_data.action.fcurves
+        fcs_remove = []
+        fcs_done = fcs
+        for ebone_name in ik_ebone_help:
+            for fc in fcs_done:
+                if fc.group.name == ebone_name.replace('_ik_rep_help',''):
+                    fcs_remove.append(fc)
+                    fcs_done = list(set(fcs_done)-set(fcs_remove))
+            pb = source_rig.pose.bones[ebone_name.replace('_ik_rep_help','')]
+            pb.location = Vector((0,0,0))
+            pb.rotation_quaternion = Quaternion((1,0,0,0))
+            pb.scale = Vector((1,1,1))
+        for fc in fcs_remove:
+            fcs.remove(fc)
 
 
         #     if type(bone['child_bone']) == str:
@@ -1867,10 +1888,10 @@ class AN_OT_LinkIKBones(bpy.types.Operator):
         #         link_bone_help = copy_edit_bone(bone['name']+'_ik_rep',bone['name']+'_ik_rep_help')
         #         link_bone_help.parent = create_edit_bone(bone['name'])
         #         create_edit_bone(link_bone_help.name,arm=scn.my_source_rig,coll_name='ik_rep_help',color='THEME03')
+        
+        select_mode(scn.my_source_rig,'POSE')
+        source_rig.data.collections['ik_rep_help'].is_visible = False
 
-
-
-        # select_mode(scn.my_source_rig,'POSE')
         return {'FINISHED'}
 
 class AN_OT_Bind_Rule(bpy.types.Operator):
