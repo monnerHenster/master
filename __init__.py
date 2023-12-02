@@ -21,17 +21,19 @@ from . import decoder
 from . import encoder
 from . import tz
 from . import config
+from . import ik_help
+from . import armature_set
 
 
 bl_info = {
     "name" : "AniTool",
     "author" : "M",
     "description" : "",
-    "blender" : (2, 80, 0),
+    "blender" : (4, 0, 0),
     "version" : (0, 0, 1),
     "location" : "",
     "warning" : "",
-    "category" : "Generic"
+    "category" : "Animation"
 }
 
 
@@ -178,14 +180,6 @@ def create_edit_bone(bone_name,arm=None,coll_name = None,color=None):
     if color:
         eb.color.palette = color
     return eb
-
-def copy_edit_bone(origin_bone,new_bone):
-    oeb = create_edit_bone(origin_bone)
-    neb = create_edit_bone(new_bone)
-    neb.head = oeb.head
-    neb.tail = oeb.tail
-    neb.matrix = oeb.matrix
-    return neb
 
 def make_foot_IK(ik_bones,left_right):
     for bone in ik_bones:
@@ -1017,35 +1011,6 @@ def copy_rest_pose(bone_map):
             )
             pb1.matrix = m @ pb1.matrix
 
-def get_source_rig(self):
-    scn = bpy.context.scene
-    # print(self.get('in__source_rig',''))
-    # print(bool(bpy.data.objects.get(self.get('in__source_rig',''))))
-    if self.get('in__source_rig','') != '' and bool(bpy.data.objects.get(self.get('in__source_rig',''))):
-        return self.get('in__source_rig','')
-    else:
-        if bpy.context.selected_objects :
-            scn.source_rig = bpy.context.selected_objects[0].name
-            return bpy.context.selected_objects[0].name
-        else:
-            return ''
-
-def _set_source_rig():
-    scn = bpy.context.scene
-    source_rig = ''
-    if (scn.source_rig == '' or (bpy.data.objects.get(scn.source_rig).name not in bpy.context.scene.objects)) and bpy.context.selected_objects:
-        source_rig = bpy.context.selected_objects[0].name
-    else:
-        source_rig = scn.source_rig
-    scn.source_rig = source_rig
-    scn.my_source_rig = bpy.data.objects.get(scn.source_rig)
-        
-def set_source_rig(self,value):
-    scn = bpy.context.scene
-    self['in__source_rig'] = value
-    if value != '':
-        scn.my_source_rig = bpy.data.objects[value]
-    
 def _pick_object(action):
     obj = bpy.context.object
     scene = bpy.context.scene
@@ -1574,325 +1539,7 @@ class AN_OT_pick_object(bpy.types.Operator):
 
         return {'FINISHED'}
     
-class AN_OT_AddIKBone(bpy.types.Operator):
-    bl_idname = 'an.add_ikbone'
-    bl_label = 'Add IKBone'
-    bl_options = {'UNDO'}
 
-    def execute(self, context):
-        scn = bpy.context.scene
-        build_bones_map()
-
-        global ik_bone
-        ik_bone_list = ik_bone.split(',')
-        select_mode(scn.my_source_rig,'EDIT')
-        for bone in ik_bone_list:
-            bone_IK = create_edit_bone(bone+'_IK')
-            bone_foot = bpy.context.object.data.edit_bones.get(bone)
-            bone_IK.head = bone_foot.tail
-            bone_IK.tail = bone_IK.head[:]
-            bone_IK.tail[1] += 20
-
-            bone_IK_Pole = create_edit_bone(bone+'_IK_Pole')
-            bone_IK_Pole.parnet = bone_IK
-            bone_foot = bpy.context.object.data.edit_bones.get(bone)
-            bone_IK_Pole.head = bone_foot.head
-            bone_IK_Pole.tail = bone_IK_Pole.head[:]
-            if bone.find('_l'):
-                move_way = 20
-            else:
-                move_way = -20
-            bone_IK_Pole.tail[1] += move_way
-
-        bpy.context.view_layer.update()        
-        select_mode(scn.my_source_rig,'POSE')
-        for bone in ik_bone_list:
-            bone_IK = scn.my_source_rig.pose.bones.get(bone+'_IK')
-            cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
-            cst.target = scn.my_source_rig
-            cst.head_tail = 1
-            cst.subtarget = bone
-
-            bone_IK_Pole = scn.my_source_rig.pose.bones.get(bone+'_IK_Pole')
-            cst = create_constraint(scn.my_source_rig,bone_IK_Pole.name,'Copy Transform IK','COPY_LOCATION')
-            cst.target = scn.my_source_rig
-            cst.head_tail = 1
-            cst.subtarget = bone
-
-        temp_source_rig = duplicate(scn.my_source_rig)
-        bpy.context.view_layer.update()
-        select_mode(scn.my_source_rig,'POSE')
-        bpy.ops.pose.select_all(action='SELECT')
-
-        bake_root_action(temp_source_rig,scn.my_source_rig)
-        select_mode(temp_source_rig,'OBJECT')
-        bpy.ops.object.select_grouped(extend=True, type='CHILDREN_RECURSIVE')
-        bpy.ops.object.delete()
-
-        select_mode(scn.my_source_rig,'POSE')
-        for bone in ik_bone_list:
-            cst = create_constraint(scn.my_source_rig,bone,'IK_Anitool','IK')
-            cst.target = scn.my_source_rig
-            cst.subtarget = bone+'_IK'
-            cst.chain_count = 2 
-            cst.pole_target = scn.my_source_rig
-            cst.pole_subtarget = bone+'_IK_Pole'
-
-        select_mode(scn.my_source_rig,'OBJECT')
-        return {'FINISHED'}
-    
-class AN_OT_AddTempIKBone(bpy.types.Operator):
-    bl_idname = 'an.add_temp_ikbone'
-    bl_label = 'Add Temp IKBone'
-    bl_options = {'UNDO'}
-
-    def execute(self, context):
-        scn = bpy.context.scene
-        build_bones_map()
-
-        global ik_bones
-        select_mode(scn.my_source_rig,'EDIT')
-        set_armature_layer(scn.my_source_rig,Viewtype=True)
-        # create ik bones
-        for bone in ik_bones:
-            if bone['type'] == 'IK':
-                bone_IK = create_edit_bone(bone['name']+'_IK','ik controls')
-                # bone_IK = create_edit_bone(bone['name']+'_IK',1)
-                bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
-                bone_IK.head = bone_IK.tail = eval('bone_target.'+bone['edit_bone_head'])[:]
-                bone_IK.tail += bone['edit_offset']
-
-            if bone['type'] == 'Transform':
-                # duplicate original bone and child it
-                bone_IK_Transfrom = create_edit_bone(bone['name']+'_IK_Transform','ik controls')
-                bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
-                bone_IK_Transfrom.head = bone_target.head[:]
-                bone_IK_Transfrom.tail = bone_target.tail[:]
-                bone_IK_Transfrom.matrix = bone_target.matrix
-                
-            if bone['pole_bone']:
-                bone_IK_Pole = create_edit_bone(bone['name']+'_IK_Pole','ik controls')
-                bone_IK_Pole.parent = bone_IK
-                bone_target = bpy.context.object.data.edit_bones.get(bone['name'])
-                bone_IK_Pole.head = bone_target.head
-                bone_IK_Pole.tail = bone_IK_Pole.head[:]
-                bone_IK_Pole.tail[1] += 20
-
-        # create foot whole ik
-        make_foot_IK(ik_bones,'left')
-        make_foot_IK(ik_bones,'right')
-
-        select_mode(scn.my_source_rig,'POSE')
-        # move parent to pose location
-        for bone in ik_bones:
-            if bone['role'] == 'foot':
-                bone_IK = scn.my_source_rig.pose.bones.get(bone['name']+'_IK_bottom')
-                cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
-                cst.target = scn.my_source_rig
-                cst.head_tail =0
-                cst.subtarget = bone['child_bone']
-                bpy.context.object.data.bones.active = bone_IK.bone
-                bone_IK.bone.select = True
-                bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
-
-        # move child to pose location
-        for bone in ik_bones:
-            if bone['type'] == 'IK':
-                bone_IK = scn.my_source_rig.pose.bones.get(bone['name']+'_IK')
-                cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_LOCATION')
-                cst.target = scn.my_source_rig
-                cst.head_tail =bone['head_tail']
-                cst.subtarget = bone['name']
-                bpy.context.object.data.bones.active = bone_IK.bone
-                bone_IK.bone.select = True
-                bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
-            
-            if bone['pole_bone']:
-                bone_IK_Pole = scn.my_source_rig.pose.bones.get(bone['name']+'_IK_Pole')
-                cst = create_constraint(scn.my_source_rig,bone_IK_Pole.name,'Copy Transform IK','COPY_LOCATION')
-                cst.target = scn.my_source_rig
-                cst.head_tail = 0
-                cst.subtarget = bone['pole_bone']
-                bpy.context.object.data.bones.active = bone_IK_Pole.bone
-                bone_IK_Pole.bone.select = True
-                bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
-                bone_IK_Pole.location += bone['pole_loc']
-
-            if bone['type'] == 'Transform':
-                bone_IK = scn.my_source_rig.pose.bones.get(bone['name']+'_IK_Transform')
-                cst = create_constraint(scn.my_source_rig,bone_IK.name,'Copy Transform IK','COPY_TRANSFORMS')
-                cst.target = scn.my_source_rig
-                cst.head_tail =bone['head_tail']
-                cst.subtarget = bone['name']
-                bpy.context.object.data.bones.active = bone_IK.bone
-                bone_IK.bone.select = True
-                bpy.ops.constraint.apply(constraint=cst.name, owner='BONE')
-
-        # add IK constraints
-        select_mode(scn.my_source_rig,'POSE')
-        for bone in ik_bones:
-            if bone['type'] == 'IK':
-                cst = create_constraint(scn.my_source_rig,bone['name'],'IK_Anitool','IK')
-                cst.target = scn.my_source_rig
-                cst.subtarget = bone['name']+'_IK'
-                cst.chain_count = bone['chain'] 
-
-            if bone['pole_bone']:
-                cst.pole_target = scn.my_source_rig
-                cst.pole_subtarget = bone['name']+'_IK_Pole'
-                cst.pole_angle = bone['pole']
-                cst.use_tail = bone['use_tail']
-
-            if bone['type'] == 'Transform':
-                cst = create_constraint(scn.my_source_rig,bone['name'],'IK_Anitool','COPY_TRANSFORMS')
-                cst.target = scn.my_source_rig
-                cst.subtarget = bone['name']+'_IK_Transform'
-
-        set_armature_layer(1)
-        select_mode(scn.my_source_rig,'POSE')
-        # bpy.ops.an.toggle_ik()
-
-        return {'FINISHED'}
-    
-class AN_OT_ToggleIK(bpy.types.Operator):
-    bl_idname = 'an.toggle_ik'
-    # global Toggle_IK_State
-    bl_label = 'Toggle IK'
-    bl_options = {'UNDO'}
-    bl_label_dynamic = 'Toggle IK Off'
-
-    def execute(self, context):
-        global Toggle_IK_State
-        scn = bpy.context.scene
-        select_mode(scn.my_source_rig,'POSE')
-        # check enabled
-        for bone in scn.my_source_rig.pose.bones:
-            for csts in bone.constraints:
-                if csts.name == 'IK_Anitool':
-                    if csts.enabled == True:
-                        Toggle_IK_State = False
-                        self.__class__.bl_label_dynamic = 'Toggle IK On'
-                    else:
-                        Toggle_IK_State = True
-                        self.__class__.bl_label_dynamic = 'Toggle IK Off'
-                        break
-
-        # set on or off
-        for bone in scn.my_source_rig.pose.bones:
-            for csts in bone.constraints:
-                if csts.name == 'IK_Anitool':
-                    csts.enabled = Toggle_IK_State
-
-        return {'FINISHED'}
-    
-class AN_OT_LinkIKBones(bpy.types.Operator):
-    bl_idname = 'an.link_ik_bone'
-    bl_label = 'link ik bones'
-    bl_options = {'UNDO'}
-
-    def execute(self, context):
-        global ik_bones
-        scn = bpy.context.scene
-        _set_source_rig()
-        source_rig = scn.my_source_rig
-        select_mode(scn.my_source_rig,'EDIT')
-
-        # create ik help and ik bones
-        for bone in ik_bones:
-            if type(bone['child_bone']) == str:
-                link_bone_parent = copy_edit_bone(bone['name'],bone['name']+'_ik_rep')
-                create_edit_bone(link_bone_parent.name,arm=scn.my_source_rig,coll_name='ik_rep',color='THEME01')
-                link_bone_child = create_edit_bone(bone['child_bone'])
-                link_bone_parent.tail = link_bone_child.head[:]
-                link_bone_parent.parent = create_edit_bone(bone['name']).parent
-
-                link_bone_help = copy_edit_bone(bone['name']+'_ik_rep',bone['name']+'_ik_rep_help')
-                link_bone_help.parent = create_edit_bone(bone['name'])
-                create_edit_bone(link_bone_help.name,arm=scn.my_source_rig,coll_name='ik_rep_help',color='THEME03')
-
-            # elif type(bone['child_bone']) == Vector:
-            #     link_bone_parent = copy_edit_bone(bone['name'],bone['name']+'_ik_rep')
-            #     create_edit_bone(link_bone_parent.name,arm=scn.my_source_rig,coll_name='ik_rep',color='THEME01')
-            #     link_bone_parent.tail = link_bone_parent.head + bone['child_bone']
-            #     link_bone_parent.parent = create_edit_bone(bone['name'])
-
-        # check if already done
-        select_mode(scn.my_source_rig,'POSE')
-        ik_ebone_help = []
-        ik_ebone_help_all = [a.name for a in source_rig.data.collections['ik_rep_help'].bones]
-        select_mode(scn.my_source_rig,'EDIT')
-        for ebone_name in ik_ebone_help_all:
-            if create_edit_bone(ebone_name.replace('_ik_rep_help','')).parent != create_edit_bone(ebone_name.replace('_help','')):
-                ik_ebone_help.append(ebone_name) 
-
-        if len(ik_ebone_help) == 0:
-            select_mode(scn.my_source_rig,'POSE')
-            return {'FINISHED'}
-        
-        # copy transform and bake to ik rep
-        select_mode(scn.my_source_rig,'POSE')
-        for eb in scn.my_source_rig.data.collections['ik_rep'].bones:
-            cst = scn.my_source_rig.pose.bones[eb.name].constraints.new('COPY_TRANSFORMS')
-            cst.target = scn.my_source_rig
-            cst.subtarget = eb.name+'_help'
-
-        bpy.ops.pose.select_all(action='DESELECT')
-        for eb in scn.my_source_rig.data.collections['ik_rep'].bones:
-            eb.select = True
-        bpy.ops.nla.bake(
-            frame_start=int(scn.my_source_rig.animation_data.action.frame_range[0]),
-            frame_end=int(scn.my_source_rig.animation_data.action.frame_range[1]),
-            step=1,
-            only_selected=True,
-            visual_keying=True,
-            clear_constraints = True,
-            use_current_action = True,
-            bake_types={'POSE'}
-            )
-        
-        # select_mode(scn.my_source_rig,'POSE')
-        # ik_ebone_help_list = []
-        # for ebone in source_rig.data.collections['ik_rep_help'].bones:
-        #     ik_ebone_help_list.append(ebone.name)
-
-        # change origin bone's parent to ik rep
-        select_mode(scn.my_source_rig,'EDIT')
-        for ebone_name in ik_ebone_help:
-            create_edit_bone(ebone_name.replace('_ik_rep_help','')).parent = create_edit_bone(ebone_name.replace('_help',''))
-
-        # clear all oregin bone's transforms
-        select_mode(scn.my_source_rig,'POSE')
-        fcs = source_rig.animation_data.action.fcurves
-        fcs_remove = []
-        fcs_done = fcs
-        for ebone_name in ik_ebone_help:
-            for fc in fcs_done:
-                if fc.group.name == ebone_name.replace('_ik_rep_help',''):
-                    fcs_remove.append(fc)
-                    fcs_done = list(set(fcs_done)-set(fcs_remove))
-            pb = source_rig.pose.bones[ebone_name.replace('_ik_rep_help','')]
-            pb.location = Vector((0,0,0))
-            pb.rotation_quaternion = Quaternion((1,0,0,0))
-            pb.scale = Vector((1,1,1))
-        for fc in fcs_remove:
-            fcs.remove(fc)
-
-
-        #     if type(bone['child_bone']) == str:
-        #         link_bone_parent = copy_edit_bone(bone['name'],bone['name']+'_ik_rep')
-        #         create_edit_bone(link_bone_parent.name,arm=scn.my_source_rig,coll_name='ik_rep',color='THEME01')
-        #         link_bone_child = create_edit_bone(bone['child_bone'])
-        #         link_bone_parent.tail = link_bone_child.head[:]
-        #         link_bone_parent.parent = create_edit_bone(bone['name']).parent
-
-        #         link_bone_help = copy_edit_bone(bone['name']+'_ik_rep',bone['name']+'_ik_rep_help')
-        #         link_bone_help.parent = create_edit_bone(bone['name'])
-        #         create_edit_bone(link_bone_help.name,arm=scn.my_source_rig,coll_name='ik_rep_help',color='THEME03')
-        
-        select_mode(scn.my_source_rig,'POSE')
-        source_rig.data.collections['ik_rep_help'].is_visible = False
-
-        return {'FINISHED'}
 
 class AN_OT_Bind_Rule(bpy.types.Operator):
     bl_idname = 'an.save_bind_rule'
@@ -2047,60 +1694,7 @@ class AN_OP_Panel(bpy.types.Panel):
             else:
                 row.operator(button.bl_idname)
 
-class AN_PT_PanelIK(bpy.types.Panel):
-    """Creates a Panel in the Object properties window"""
-    bl_label = "IK Operator"
-    bl_category = "AniTool"
-    bl_idname = "IK_PT_Operator"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
 
-    def draw(self, context):
-        for index,button in enumerate(ik_button):
-            if index >= 0 and index%2 == 0:
-                row = self.layout.row()
-            if hasattr(button,'bl_label_dynamic'):
-                row.operator(button.bl_idname,text=button.bl_label_dynamic)
-            else:
-                row.operator(button.bl_idname)
-
-class AN_PT_PanelIK_Bone(bpy.types.Panel):
-    """Creates a Panel in the Object properties window"""
-    bl_label = "IK Bone Set"
-    bl_parent_id = "IK_PT_Operator"
-    bl_category = "AniTool"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-
-    def draw(self, context):
-        scn = bpy.context.scene
-        row = self.layout.row()
-
-        row.label(text='Source Armature')
-
-
-class AN_PT_ArmatureSet(bpy.types.Panel):
-    """Creates a Panel in the Object properties window"""
-    bl_label = "Armature Set"
-    bl_category = "AniTool"
-    bl_idname = "HI_PT_armatureset"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-
-    def draw(self, context):
-        scn = bpy.context.scene
-
-        # Armature选择
-        box = self.layout.box()
-        row = box.row(align=True)
-        row.label(text='Source Armature')
-        # row.prop(scn,'source_rig',text='')
-        row.prop_search(scn, "source_rig", bpy.data, "objects", text="")
-        row.operator("an.pick_object", text="", icon='EYEDROPPER').action = 'pick_source'
-        row.prop(scn,'my_source_rig',text='')
-        row = box.row(align=True)
-        row.label(text='Target Armature')
-        row.prop(scn,'my_target_rig',text='')
 
 class AN_PT_ChainList(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -2208,7 +1802,6 @@ class AN_PT_ChainList(bpy.types.Panel):
 
 classes = [
         # Armature Set
-        AN_PT_ArmatureSet,
         AN_PROP_BoneIgnore,
         AN_OT_AddDefaultIgnoe,
         AN_OT_AutoAddIgnoe,
@@ -2223,13 +1816,13 @@ classes = [
         AN_OT_Bind_Rule,
         AN_OT_AlightRestBone,
 
-        AN_PT_PanelIK,
-        AN_PT_PanelIK_Bone,
+        # AN_PT_PanelIK,
+        # AN_PT_PanelIK_Bone,
         AN_OT_pick_object,
-        AN_OT_AddIKBone,
-        AN_OT_AddTempIKBone,
-        AN_OT_ToggleIK,
-        AN_OT_LinkIKBones,
+        # AN_OT_AddIKBone,
+        # AN_OT_AddTempIKBone,
+        # AN_OT_ToggleIK,
+        # AN_OT_LinkIKBones,
 
         AN_PT_ChainList,
         AN_PGT_ChainBindRule,
@@ -2265,16 +1858,11 @@ reg_button = [
     AN_OT_SetActionRange,
 ]
 
-ik_button = [
-    AN_OT_AddIKBone,
-    AN_OT_AddTempIKBone,
-    AN_OT_ToggleIK,
-    AN_OT_LinkIKBones
-]
-
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
+    ik_help.register()
+    armature_set.register()
 
     bpy.types.Scene.my_copy_rest_pose_rule = bpy.props.EnumProperty(items=(('U2U','Unreal to Unreal','Unreal to Unreal'),('U2M','Unreal to Mixamo','Unreal to Mixamo')))
     bpy.types.Scene.my_test_string = bpy.props.StringProperty(update=update_string)
@@ -2291,10 +1879,6 @@ def register():
     bpy.types.Scene.an_bind_rule_expand_ui = bpy.props.BoolProperty()
     bpy.types.Scene.my_chain_bind_rule_LR = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
     bpy.types.Scene.my_chain_bind_rule_body = bpy.props.CollectionProperty(type=AN_PGT_ChainBindRule)
-    bpy.types.Scene.my_source_rig = bpy.props.PointerProperty(type=bpy.types.Object)
-    # bpy.types.Scene.source_rig = bpy.props.StringProperty(get=get_source_rig,set=set_source_rig)
-    bpy.types.Scene.source_rig = bpy.props.StringProperty()
-    bpy.types.Scene.my_target_rig = bpy.props.PointerProperty(type=bpy.types.Object)
     bpy.types.Scene.color_set_text = bpy.props.FloatVectorProperty(name="Color Text", subtype="COLOR_GAMMA",
                                                                    default=(0.887, 0.887, 0.887), min=0.0, max=1.0,
                                                                    description="Text color in the picker panel")
@@ -2303,6 +1887,8 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
+    ik_help.unregister()
+    armature_set.unregister()
     del bpy.types.Scene.my_copy_rest_pose_rule
     del bpy.types.Scene.my_test_string
     del bpy.types.Scene.my_source_chains
@@ -2314,9 +1900,6 @@ def unregister():
     del bpy.types.Scene.my_ignore_bone_name
     del bpy.types.Scene.color_set_text
     del bpy.types.Scene.my_chain_map
-    del bpy.types.Scene.my_source_rig
-    del bpy.types.Scene.source_rig
-    del bpy.types.Scene.my_target_rig
     del bpy.types.Scene.my_chain_bind_rule_LR
     del bpy.types.Scene.my_chain_bind_rule_body
     del bpy.types.Scene.my_bones_map
